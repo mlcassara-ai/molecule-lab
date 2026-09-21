@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Molecule Lab">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+</head>
+<title>Molecule Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito+Sans:wght@400;700&display=swap">
+<style>
+  :root { --ink:#0d1626; --panel:#15223a; --line:#2a3d61; --text:#e8eef8; --muted:#9fb0cc; }
+  * { box-sizing: border-box; }
+  html, body { background: var(--ink); color: var(--text); margin: 0; }
+  body { font-family: "Nunito Sans", system-ui, -apple-system, sans-serif; -webkit-text-size-adjust: 100%; }
+  .wrap { max-width: 900px; margin: 0 auto; padding-inline: 16px; padding-block: calc(22px + env(safe-area-inset-top,0px)) 40px; display: grid; gap: 18px; }
+  h1 { font-family: "Baloo 2", system-ui, sans-serif; font-weight: 800; font-size: clamp(34px, 8vw, 52px); line-height: 1; margin: 0; }
+  h1 .a { color: #4fd8ff; }
+  .lede { color: var(--muted); margin: 6px 0 0; max-width: 52ch; }
+  h2 { font-family: "Baloo 2", system-ui, sans-serif; font-size: 14px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); margin: 8px 0 0; font-weight: 600; }
+  .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  a.game { display: grid; gap: 6px; text-decoration: none; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; -webkit-tap-highlight-color: transparent; }
+  a.game:active { transform: scale(.98); }
+  .game .t { font-family: "Baloo 2", system-ui, sans-serif; font-weight: 800; font-size: 24px; line-height: 1.05; }
+  .game .d { color: var(--muted); font-size: 14.5px; line-height: 1.4; }
+  .game .tag { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; font-weight: 700; }
+  .salt .t span:first-child { color: #f28c28; } .salt .t span:last-child { color: #3fb950; }
+  .water .t span { color: #3aa0ff; } .sugar .t span { color: #f3b33d; }
+  .prints { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  a.pr { display: flex; justify-content: space-between; align-items: center; gap: 10px; text-decoration: none; color: inherit; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-weight: 700; }
+  a.pr small { color: var(--muted); font-weight: 400; }
+  .tip { color: var(--muted); font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+<div class="wrap">
+  <div><h1>Molecule <span class="a">Lab</span></h1>
+  <p class="lede">Build molecules, steal and share electrons, and see what heat really does. Works on iPhone, iPad and computers.</p></div>
+  <h2>Games</h2>
+  <div class="games">
+    <a class="game salt" href="salt.html"><div class="t"><span>Electron Tug</span>-of-<span>War</span></div>
+      <div class="d">Push sodium and chlorine together. Chlorine steals an electron, then + and − snap into table salt. Melt it with a torch, zap it back with electricity.</div>
+      <div class="tag">NaCl · stealing (ionic)</div></a>
+    <a class="game water" href="water.html"><div class="t">Share-a-Pair <span>Water</span></div>
+      <div class="d">Bring two hydrogens to an oxygen and watch them share pairs of electrons. Then boil it, and heat it way past boiling until the bonds snap.</div>
+      <div class="tag">H₂O · sharing (covalent)</div></a>
+    <a class="game sugar" href="sugar.html"><div class="t">Sugar <span>Factory</span></div>
+      <div class="d">Snap 24 atoms into glucose. Dissolve it in water, burn it black with a torch, or burn it for energy like your body does.</div>
+      <div class="tag">C₆H₁₂O₆ · 24 atoms</div></a>
+  </div>
+  <h2>Print these</h2>
+  <div class="prints">
+    <a class="pr" href="print/molecule-builder.pdf">Molecule Builder <small>3 pages</small></a>
+    <a class="pr" href="print/periodic-table.pdf">Our Periodic Table <small>2 pages</small></a>
+    <a class="pr" href="print/how-atoms-build-everything.pdf">How Atoms Build Everything <small>1 page</small></a>
+    <a class="pr" href="print/sugar-build-sheet.pdf">Sugar build sheet <small>1 page</small></a>
+  </div>
+  <p class="tip">On iPhone or iPad: tap the Share button in Safari, then <b>Add to Home Screen</b> to keep Molecule Lab like an app.</p>
+</div>
+
+</body>
+</html>

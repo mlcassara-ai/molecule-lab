@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Molecule Lab">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+</head>
+<body>
+<title>Share-a-Pair Water Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito+Sans:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root {
+    --ink: #0b1724;
+    --panel: #12243a;
+    --panel-2: #1a3150;
+    --line: #28446a;
+    --text: #e8f1fa;
+    --muted: #9db4cf;
+    --o: #ef4b43;
+    --h: #f4f7fb;
+    --el: #4fd8ff;
+    --pair: #ffd43b;
+    --water: #3aa0ff;
+    --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  html, body { background: var(--ink); color: var(--text); }
+  body { font-family: var(--body); font-size: 15px; line-height: 1.45; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 32px; display: grid; gap: 14px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 5vw, 40px); line-height: 1; margin: 0; letter-spacing: -0.5px; }
+  h1 .p { color: var(--pair); } h1 .w { color: var(--water); }
+  .tag { color: var(--muted); font-size: 14px; max-width: 48ch; text-wrap: balance; }
+  .stage { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #08131f; }
+  canvas { display: block; width: 100%; touch-action: none; cursor: grab; }
+  canvas.dragging { cursor: grabbing; }
+  .hint { position: absolute; left: 12px; bottom: 10px; font-size: 12.5px; color: var(--muted); background: rgba(11,23,36,.78); padding: 4px 10px; border-radius: 999px; pointer-events: none; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { font-family: var(--display); font-weight: 600; font-size: 16px; border: 0; border-radius: 10px; padding: 8px 16px 6px; cursor: pointer; color: var(--ink); background: var(--text); }
+  button.go { background: var(--el); }
+  button.torch { background: #ff7a45; }
+  button.torch[aria-pressed="true"] { background: #ffd43b; box-shadow: 0 0 18px #ff7a45; }
+  button.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--line); }
+  button[aria-pressed="true"].ghost { background: var(--panel-2); box-shadow: inset 0 0 0 1.5px var(--pair); color: var(--pair); }
+  button:disabled { opacity: .32; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--pair); outline-offset: 2px; }
+  .slider { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; flex: 1 1 220px; min-width: 0; }
+  .slider label { font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+  .slider output { font-family: var(--mono); font-size: 13px; color: var(--muted); min-width: 4ch; text-align: right; }
+  input[type=range] { width: 100%; accent-color: var(--el); }
+  #heat { accent-color: #ff7a45; }
+  .explore { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+  .explore .lbl { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+  .cards { display: grid; grid-template-columns: 1.25fr 1fr; gap: 12px; }
+  @media (max-width: 820px) { .cards { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+  .card h2 { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin: 0; font-weight: 600; }
+  #phaseTitle { font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1.1; }
+  #phaseText { font-size: 14.5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: right; padding: 4px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 700; font-size: 12px; }
+  td { font-family: var(--mono); }
+  td.name { font-family: var(--body); font-weight: 700; }
+  .full { color: #5ee08a; font-weight: 700; } .need { color: var(--muted); }
+  .keys { font-size: 12.5px; color: var(--muted); }
+  kbd { font-family: var(--mono); font-size: 11.5px; background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; color: var(--text); }
+  .flashy { animation: pop .5s ease-out; }
+  @keyframes pop { from { transform: scale(1.05); } to { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .flashy { animation: none; } }
+  /* touch-friendly */
+  html { -webkit-text-size-adjust: 100%; }
+  body { -webkit-tap-highlight-color: transparent; }
+  button, canvas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+  canvas { touch-action: none; }
+  @media (hover: none) { kbd { display: none; } }
+</style>
+<a href="index.html" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
+
+
+<div class="wrap">
+  <header>
+    <h1>Share-a-<span class="p">Pair</span> <span class="w">Water</span> Builder</h1>
+    <div class="tag">Bring two hydrogens to an oxygen. Nobody steals an electron: they share pairs, and that makes water.</div>
+  </header>
+
+  <div class="stage">
+    <canvas id="c" aria-label="Animation of two hydrogen atoms sharing electrons with an oxygen atom to form water"></canvas>
+    <div class="hint" id="hint">Drag a white hydrogen atom to the red oxygen, or press Start</div>
+  </div>
+
+  <div class="controls">
+    <div class="btns">
+      <button class="go" id="autoBtn" aria-pressed="false">Start</button>
+      <button class="ghost" id="slowBtn" aria-pressed="false">Slow-mo</button>
+      <button class="ghost" id="resetBtn">Reset</button>
+      <button class="torch" id="torchBtn" aria-pressed="false">Torch (hold)</button>
+    </div>
+    <div class="slider"><label for="speed">Approach speed</label><input type="range" id="speed" min="0" max="100" value="35"><output id="speedOut">35</output></div>
+    <div class="slider"><label for="heat">Heat (jiggle)</label><input type="range" id="heat" min="0" max="100" value="25"><output id="heatOut">25</output></div>
+  </div>
+
+  <div class="explore">
+    <span class="lbl">Explore</span>
+    <button class="ghost" id="countO" aria-pressed="false" disabled>Count for oxygen</button>
+    <button class="ghost" id="countH" aria-pressed="false" disabled>Count for hydrogen</button>
+    <button class="ghost" id="hog" aria-pressed="false" disabled>Who hogs the electrons?</button>
+    <button class="ghost" id="thirdH" disabled>Try a 3rd hydrogen</button>
+  </div>
+
+  <div class="cards">
+    <div class="card" id="phaseCard">
+      <h2>What's happening</h2>
+      <div id="phaseTitle">Three lonely atoms</div>
+      <div id="phaseText"></div>
+    </div>
+    <div class="card">
+      <h2>Outer shell check</h2>
+      <table>
+        <thead><tr><th>Atom</th><th>Own</th><th>Shared pairs</th><th>Counts</th><th>Wants</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="name" style="color:var(--o)">Oxygen</td><td>6</td><td id="oPairs">0</td><td id="oCount">6</td><td>8</td><td id="oFull" class="need">needs 2</td></tr>
+          <tr><td class="name">Hydrogen A</td><td>1</td><td id="h0Pairs">0</td><td id="h0Count">1</td><td>2</td><td id="h0Full" class="need">needs 1</td></tr>
+          <tr><td class="name">Hydrogen B</td><td>1</td><td id="h1Pairs">0</td><td id="h1Count">1</td><td>2</td><td id="h1Full" class="need">needs 1</td></tr>
+        </tbody>
+      </table>
+      <div class="keys">Charge on every atom stays <b>0</b>: sharing, not stealing. Keys: <kbd>Space</kbd> start/stop · <kbd>R</kbd> reset · <kbd>H</kbd> hold torch</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('c');
+  const ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const COL = { o: '#ef4b43', h: '#f4f7fb', el: '#4fd8ff', inner: '#cfdcec', pair: '#ffd43b', water: '#3aa0ff' };
+
+  const O_R = [18, 46], H_R = 26, BOND = 74;
+  const SITE_ANG = [90 + 52.25, 90 - 52.25];      // bent water: 104.5 degrees apart, pointing down
+  const LONE_ANG = [-90 - 42, -90 + 42];
+
+  let W = 800, H = 420, s = 1, dpr = 1;
+  const S = {};
+
+  const PHASES = {
+    ready:  ['Three lonely atoms', 'Oxygen has 6 electrons in its outer shell and wants 8, so it has 2 empty seats. Each hydrogen has 1 and wants 2. Bring a hydrogen close to oxygen.'],
+    close:  ['Getting close...', 'The hydrogen’s shell is starting to overlap oxygen’s outer shell. Where shells overlap, electrons can be shared.'],
+    one:    ['One bond: a shared pair!', 'Hydrogen puts in 1 electron and oxygen puts in 1. That pair sits between them and counts for both. Hydrogen now counts 2 (full!). Oxygen counts 7. One more hydrogen to go.'],
+    water:  ['Water! H₂O', 'Oxygen now counts 8: 4 of its own plus 4 shared. Each hydrogen counts 2. Nobody stole anything, so there are no + or − ions. This is a covalent bond. Notice the bent shape.'],
+    boiling:['Boiling! (100°C)', 'The water molecules are shaking so hard they fly away from each other. That is steam! But look: every bond is still there. Boiling does not break water apart. Keep heating...'],
+    broke1: ['A bond snapped! (~3000°C)', 'The shared pair split. Hydrogen took its own electron back and oxygen kept its own. No ions this time, just neutral atoms. One more bond to go...'],
+    split:  ['Split apart!', 'Both bonds broke, so it is three lonely atoms again, each with its own electrons. It took about 3000°C! Let go of the torch so things cool down, then build water again. When hydrogen and oxygen join they release that energy, which is why hydrogen is used as rocket fuel.'],
+    toohot: ['Too hot to stick', 'The atoms are shaking so hard they bounce right off each other. Let go of the torch and let things cool down before building water again.'],
+    full:   ['No room!', 'Oxygen is already full with 8. It has no empty seats left, so a third hydrogen just bounces off. That is why water is always H₂O, never H₃O.']
+  };
+
+  function newH(x, y, seed) { return { x, y, vx: 0, vy: 0, bonded: false, site: -1, bondT: 0, seed, extra: false }; }
+
+  function reset() {
+    Object.assign(S, {
+      phase: 'ready', auto: false, t: 0,
+      o: { x: W * 0.5, y: H * 0.4 },
+      hs: [newH(W * 0.14, H * 0.62, 1.7), newH(W * 0.86, H * 0.62, 3.9)],
+      sites: [null, null], particles: [], rings: [], dragging: null,
+      countO: false, countH: false, hog: false, bounceMsgT: 0, energy: 0, torch: false, breakCool: 0, msgHold: 0, boiled: false
+    });
+    for (const id of ['countO', 'countH', 'hog']) { $(id).setAttribute('aria-pressed', 'false'); $(id).disabled = true; }
+    $('thirdH').disabled = true;
+    $('torchBtn').setAttribute('aria-pressed', 'false');
+    S.auto = false; syncAuto();
+    $('hint').hidden = false;
+    setPhase('ready'); ledger();
+  }
+
+  function setPhase(p) {
+    if (S.phase === p && $('phaseTitle').textContent === PHASES[p][0]) return;
+    S.phase = p;
+    $('phaseTitle').textContent = PHASES[p][0];
+    $('phaseText').textContent = PHASES[p][1];
+    const card = $('phaseCard'); card.classList.remove('flashy'); void card.offsetWidth; card.classList.add('flashy');
+  }
+
+  function ledger() {
+    const nb = S.hs.filter(h => h.bonded && !h.extra).length;
+    $('oPairs').textContent = nb; $('oCount').textContent = 6 + nb;
+    const of = 6 + nb === 8; $('oFull').textContent = of ? 'full!' : `needs ${2 - nb}`; $('oFull').className = of ? 'full' : 'need';
+    S.hs.slice(0, 2).forEach((h, i) => {
+      $('h' + i + 'Pairs').textContent = h.bonded ? 1 : 0;
+      $('h' + i + 'Count').textContent = h.bonded ? 2 : 1;
+      $('h' + i + 'Full').textContent = h.bonded ? 'full!' : 'needs 1';
+      $('h' + i + 'Full').className = h.bonded ? 'full' : 'need';
+    });
+  }
+
+  function resize() {
+    const r = cv.getBoundingClientRect();
+    const oldW = W, oldH = H;
+    W = Math.max(300, r.width);
+    H = Math.round(Math.min(460, Math.max(300, W * 0.52)));
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    s = Math.max(0.72, Math.min(2.1, Math.min(W / 820, H / 420) * 1.7));
+    if (S.o) { for (const a of [S.o, ...S.hs]) { a.x *= W / oldW; a.y *= H / oldH; } }
+  }
+
+  const heat = () => +$('heat').value / 100;
+  const speed = () => +$('speed').value;
+  const captureD = () => (O_R[1] + H_R) * s * 1.12;
+  const rad = d => d * Math.PI / 180;
+
+  function jig(seed, amp = 1) {
+    const a = (heat() + (S.energy || 0) * 1.6) * 8 * s * amp, t = S.t;
+    return { x: a * (Math.sin(t * 7.3 + seed) + 0.5 * Math.sin(t * 12.1 + seed * 2)), y: a * (Math.cos(t * 6.1 + seed * 1.4) + 0.5 * Math.sin(t * 10.7 + seed)) };
+  }
+
+  function sitePos(i, O) {
+    const a = rad(SITE_ANG[i]);
+    return { x: O.x + Math.cos(a) * BOND * s, y: O.y + Math.sin(a) * BOND * s };
+  }
+
+  // rendered positions
+  function oPos() { const j = jig(0.4); return { x: S.o.x + j.x, y: S.o.y + j.y }; }
+  function hPos(h, O) {
+    if (h.bonded) {
+      const sp = sitePos(h.site, O);
+      const e = ease(Math.min(1, h.bondT));
+      const vib = jig(h.seed + 5, 0.35);
+      return { x: h.x + (sp.x - h.x) * e + vib.x, y: h.y + (sp.y - h.y) * e + vib.y };
+    }
+    const j = jig(h.seed); return { x: h.x + j.x, y: h.y + j.y };
+  }
+  const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+  // ---------- update ----------
+  function update(dt) {
+    S.t += dt;
+    const O = oPos();
+    const nb = S.hs.filter(h => h.bonded).length;
+    let anyClose = false;
+
+    S.hs.forEach((h, idx) => {
+      if (h.bonded) { h.bondT = Math.min(1, h.bondT + dt / 0.55); if (h.bondT >= 1 && !h.done) { const sp = sitePos(h.site, S.o); h.x = sp.x; h.y = sp.y; h.done = true; } return; }
+      // bounce motion for extra hydrogen
+      if (Math.abs(h.vx) + Math.abs(h.vy) > 0.1) {
+        h.x += h.vx * dt; h.y += h.vy * dt; h.vx *= 0.94; h.vy *= 0.94;
+      }
+      const free = S.sites.findIndex(x => x === null);
+      if (S.auto && S.dragging !== h && free !== -1 && !h.extra) {
+        const target = nearestFree(h);
+        const tp = sitePos(target, S.o);
+        const dx = tp.x - h.x, dy = tp.y - h.y, L = Math.hypot(dx, dy) || 1;
+        const v = speed() * 1.8 * s * dt;
+        h.x += dx / L * Math.min(v, L); h.y += dy / L * Math.min(v, L);
+      }
+      const hp = hPos(h, O);
+      const d = Math.hypot(hp.x - O.x, hp.y - O.y);
+      if (d < captureD() * 1.7) anyClose = true;
+      if (d < captureD() && S.energy >= 0.6 && !h.extra) {
+        const ux = (hp.x - O.x) / (d || 1), uy = (hp.y - O.y) / (d || 1);
+        h.vx = ux * 300 * s; h.vy = uy * 300 * s; if (S.dragging === h) endDrag();
+        if (S.msgHold <= 0) { setPhase('toohot'); S.msgHold = 3; }
+      } else if (d < captureD()) {
+        const site = nearestFree(h);
+        if (site === -1) {
+          // oxygen full: bounce away
+          const ux = (hp.x - O.x) / (d || 1), uy = (hp.y - O.y) / (d || 1);
+          h.vx = ux * 420 * s; h.vy = uy * 420 * s;
+          if (S.dragging === h) endDrag();
+          S.rings.push({ x: hp.x - ux * 20 * s, y: hp.y - uy * 20 * s, r: 6 * s, a: 0.8, c: '#ff6b6b' });
+          setPhase('full'); S.bounceMsgT = 4;
+        } else {
+          h.bonded = true; h.site = site; h.bondT = 0; h.done = false; S.sites[site] = h;
+          h.x = hp.x; h.y = hp.y;
+          if (S.dragging === h) endDrag();
+          const sp = sitePos(site, O);
+          burst((O.x + sp.x) / 2, (O.y + sp.y) / 2);
+          ledger();
+          const n = S.hs.filter(x => x.bonded).length;
+          if (n === 1) setPhase('one');
+          if (n === 2) { setPhase('water'); S.auto = false; syncAuto(); for (const id of ['countO', 'countH', 'hog']) $(id).disabled = false; $('thirdH').disabled = false; }
+        }
+      }
+      // keep inside canvas
+      h.x = Math.max(H_R * s, Math.min(W - H_R * s, h.x));
+      h.y = Math.max(H_R * s + 6, Math.min(H - H_R * s - 24, h.y));
+    });
+
+    // ---- torch: energy in, bonds break ----
+    if (S.torch) S.energy = Math.min(1.15, S.energy + dt * 0.3);
+    else S.energy = Math.max(0, S.energy - dt * 0.16);
+    S.breakCool = Math.max(0, S.breakCool - dt);
+    S.msgHold = Math.max(0, S.msgHold - dt);
+    const bondedNow = S.hs.filter(h => h.bonded && h.bondT >= 1);
+    if (S.energy >= 0.3 && bondedNow.length === 2 && !S.boiled) { S.boiled = true; setPhase('boiling'); S.msgHold = 2.5; }
+    if (S.energy < 0.2) S.boiled = false;
+    if (S.energy >= 1 && bondedNow.length && S.breakCool <= 0) {
+      const h = bondedNow[0];
+      const hp = hPos(h, O);
+      const sp = pairSpot(O, hp);
+      S.rings.push({ x: sp.x, y: sp.y, r: 6 * s, a: 0.9, c: '#ff7a45' });
+      S.sites[h.site] = null; h.bonded = false; h.site = -1; h.done = false;
+      h.x = hp.x; h.y = hp.y;
+      const dx = hp.x - O.x, dy = hp.y - O.y, L = Math.hypot(dx, dy) || 1;
+      h.vx = dx / L * 520 * s; h.vy = dy / L * 520 * s;
+      S.breakCool = 0.9;
+      for (const id of ['countO', 'countH', 'hog']) { $(id).setAttribute('aria-pressed', 'false'); $(id).disabled = true; S[id] = false; }
+      $('thirdH').disabled = true;
+      ledger();
+      const left = S.hs.filter(x => x.bonded).length;
+      setPhase(left ? 'broke1' : 'split'); S.msgHold = left ? 3 : 7;
+    }
+
+    if (nb === 0 && S.phase !== 'full' && S.msgHold <= 0 && S.energy < 0.6) setPhase(anyClose ? 'close' : 'ready');
+    if (S.bounceMsgT > 0) { S.bounceMsgT -= dt; if (S.bounceMsgT <= 0 && S.phase === 'full') setPhase('water'); }
+
+    for (const p of S.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96; p.life -= dt; }
+    S.particles = S.particles.filter(p => p.life > 0);
+    for (const r of S.rings) { r.r += 200 * s * dt; r.a -= dt * 1.3; }
+    S.rings = S.rings.filter(r => r.a > 0);
+  }
+
+  function nearestFree(h) {
+    let best = -1, bd = Infinity;
+    S.sites.forEach((x, i) => { if (x === null) { const p = sitePos(i, S.o); const d = Math.hypot(p.x - h.x, p.y - h.y); if (d < bd) { bd = d; best = i; } } });
+    return best;
+  }
+
+  function burst(x, y) {
+    const n = reduceMotion ? 8 : 24;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, v = (80 + Math.random() * 160) * s;
+      S.particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.5 + Math.random() * 0.5, c: Math.random() < 0.6 ? COL.pair : '#ffffff' });
+    }
+    S.rings.push({ x, y, r: 8 * s, a: 0.9, c: COL.pair });
+  }
+
+  // ---------- drawing ----------
+  function bg() {
+    const g = ctx.createRadialGradient(W / 2, H * 0.45, 10, W / 2, H * 0.45, Math.max(W, H) * 0.75);
+    const h = heat();
+    g.addColorStop(0, `rgb(${24 + h * 50},${48 + h * 6},${78 - h * 20})`); g.addColorStop(1, '#08131f');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(120,170,220,0.07)'; ctx.lineWidth = 1;
+    const step = 32 * s; ctx.beginPath();
+    for (let x = (W / 2) % step; x < W; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for (let y = (H / 2) % step; y < H; y += step) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+    ctx.stroke();
+  }
+  function ring(x, y, r, col = 'rgba(190,215,245,0.3)') {
+    ctx.save(); ctx.setLineDash([4, 5]); ctx.strokeStyle = col; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
+  function electron(x, y, color, glow, r = 4.4) {
+    ctx.save(); if (glow) { ctx.shadowColor = color; ctx.shadowBlur = 14 * s; }
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r * s, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  function seat(x, y) {
+    ctx.save(); ctx.setLineDash([2.5, 2.5]); ctx.strokeStyle = 'rgba(232,241,250,0.85)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(x, y, 4.6 * s, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
+  function halo(x, y) {
+    ctx.save(); ctx.strokeStyle = COL.pair; ctx.lineWidth = 2.2 * s; ctx.shadowColor = COL.pair; ctx.shadowBlur = 10 * s;
+    ctx.beginPath(); ctx.arc(x, y, 8.5 * s, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
+  function nucleus(x, y, r, color, label, dark) {
+    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
+    g.addColorStop(0, '#fff'); g.addColorStop(0.3, color); g.addColorStop(1, dark);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0b1724'; ctx.font = `800 ${Math.round(11 * s)}px "JetBrains Mono", monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x, y + 0.5);
+  }
+  function text(x, y, str, color, size, weight = 800, font = '"Baloo 2", system-ui, sans-serif') {
+    ctx.fillStyle = color; ctx.font = `${weight} ${Math.round(size * s)}px ${font}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText(str, x, y);
+  }
+
+  function pairSpot(O, hp) {
+    // where the shared pair sits: in the overlap of the two shells; nudged toward O when "hog" is on
+    const dx = hp.x - O.x, dy = hp.y - O.y, d = Math.hypot(dx, dy) || 1;
+    const along = (O_R[1] * s + (d - H_R * s)) / 2 - (S.hog ? 7 * s : 0);
+    const ux = dx / d, uy = dy / d;
+    return { x: O.x + ux * along, y: O.y + uy * along, px: -uy, py: ux };
+  }
+
+  function draw() {
+    bg();
+    const O = oPos();
+    const R0 = O_R[0] * s, R1 = O_R[1] * s;
+
+    // bond sticks (drawn under atoms) for completed bonds
+    for (const h of S.hs) {
+      if (!h.bonded) continue;
+      const hp = hPos(h, O);
+      ctx.save(); ctx.globalAlpha = 0.18 + 0.25 * ease(h.bondT); ctx.strokeStyle = COL.pair; ctx.lineWidth = 16 * s; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(O.x, O.y); ctx.lineTo(hp.x, hp.y); ctx.stroke(); ctx.restore();
+    }
+
+    drawTorch(O);
+    // oxygen shells
+    ring(O.x, O.y, R0); ring(O.x, O.y, R1);
+    for (let i = 0; i < 2; i++) { const a = S.t * 1.6 + i * Math.PI; electron(O.x + Math.cos(a) * R0, O.y + Math.sin(a) * R0, COL.inner, false, 3.6); }
+    // lone pairs (4 own electrons that are never shared)
+    const lone = [];
+    for (const la of LONE_ANG) for (const off of [-9, 9]) {
+      const a = rad(la + off + Math.sin(S.t * 1.3) * 3);
+      lone.push({ x: O.x + Math.cos(a) * R1, y: O.y + Math.sin(a) * R1 });
+    }
+    lone.forEach(p => electron(p.x, p.y, COL.inner, false, 4));
+    if (S.countO) lone.forEach(p => halo(p.x, p.y));
+
+    // bonding sites: single O electron + empty seat, or shared pair
+    const shared = [];
+    for (let i = 0; i < 2; i++) {
+      const h = S.sites[i];
+      const aE = rad(SITE_ANG[i] - 9), aS = rad(SITE_ANG[i] + 9);
+      const oe = { x: O.x + Math.cos(aE) * R1, y: O.y + Math.sin(aE) * R1 };
+      const st = { x: O.x + Math.cos(aS) * R1, y: O.y + Math.sin(aS) * R1 };
+      if (!h) { electron(oe.x, oe.y, COL.inner, false, 4); seat(st.x, st.y); continue; }
+      const hp = hPos(h, O), sp = pairSpot(O, hp), e = ease(Math.min(1, h.bondT));
+      const gap = 5.5 * s;
+      const oTarget = { x: sp.x + sp.px * gap, y: sp.y + sp.py * gap };
+      const hTarget = { x: sp.x - sp.px * gap, y: sp.y - sp.py * gap };
+      const hStart = h.startE || hTarget;
+      const oNow = { x: oe.x + (oTarget.x - oe.x) * e, y: oe.y + (oTarget.y - oe.y) * e };
+      const hNow = { x: hStart.x + (hTarget.x - hStart.x) * e, y: hStart.y + (hTarget.y - hStart.y) * e };
+      shared.push({ o: oNow, h: hNow, sp, done: e >= 1, hp });
+    }
+    nucleus(O.x, O.y, 13 * s, COL.o, '8+', '#8e1b18');
+
+    // hydrogens
+    S.hs.forEach(h => {
+      const hp = hPos(h, O);
+      ring(hp.x, hp.y, H_R * s, h.extra ? 'rgba(255,140,140,0.4)' : 'rgba(190,215,245,0.3)');
+      if (!h.bonded) {
+        const a = S.t * 2.1 + h.seed;
+        const ep = { x: hp.x + Math.cos(a) * H_R * s, y: hp.y + Math.sin(a) * H_R * s };
+        h.startE = ep;
+        electron(ep.x, ep.y, COL.el, true, 4.8);
+      }
+      nucleus(hp.x, hp.y, 10 * s, COL.h, '1+', '#9aa7b8');
+      text(hp.x, hp.y + H_R * s + 18 * s, 'H', '#f4f7fb', 16);
+    });
+
+    // shared pairs on top
+    shared.forEach(p => {
+      if (p.done) {
+        ctx.save(); ctx.fillStyle = 'rgba(255,212,59,0.16)'; ctx.beginPath(); ctx.ellipse(p.sp.x, p.sp.y, 13 * s, 13 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      electron(p.o.x, p.o.y, COL.inner, false, 4.2);
+      electron(p.h.x, p.h.y, COL.el, true, 4.6);
+      if (S.countO || S.countH) { halo(p.o.x, p.o.y); halo(p.h.x, p.h.y); }
+    });
+
+    // oxygen label
+    text(O.x, O.y - R1 - 14 * s, 'O', COL.o, 18);
+
+    // count badges
+    if (S.countO) badge(O.x + R1 + 22 * s, O.y - R1 * 0.4, '8', COL.pair, 'oxygen counts');
+    if (S.countH) S.hs.forEach(h => { if (h.bonded && !h.extra) { const hp = hPos(h, O); badge(hp.x + (hp.x < O.x ? -1 : 1) * (H_R + 18) * s, hp.y + 4 * s, '2', COL.pair, 'hydrogen counts'); } });
+
+    // hog: partial charges
+    if (S.hog && S.hs.filter(h => h.bonded).length === 2) {
+      text(O.x - R1 - 22 * s, O.y - 4 * s, 'δ−', '#ff8a80', 20);
+      S.hs.forEach(h => { if (h.bonded) { const hp = hPos(h, O); text(hp.x + (hp.x < O.x ? -1 : 1) * (H_R + 16) * s, hp.y - 14 * s, 'δ+', '#9fd3ff', 18); } });
+    }
+
+    // water banner + angle
+    if (S.hs.filter(h => h.bonded && h.bondT >= 1).length === 2) {
+      const a0 = rad(SITE_ANG[1]), a1 = rad(SITE_ANG[0]);
+      ctx.save(); ctx.strokeStyle = 'rgba(58,160,255,0.9)'; ctx.lineWidth = 2 * s;
+      ctx.beginPath(); ctx.arc(O.x, O.y, (BOND + 14) * s, a0, a1); ctx.stroke(); ctx.restore();
+      text(O.x, O.y + (BOND + 32) * s, '104.5°', COL.water, 13, 700, '"JetBrains Mono", monospace');
+      text(O.x - (BOND * 2.4) * s, O.y - R1 * 0.9, 'H₂O', COL.water, 30);
+    }
+
+    // fx
+    for (const r of S.rings) { ctx.save(); ctx.globalAlpha = Math.max(0, r.a); ctx.strokeStyle = r.c; ctx.lineWidth = 2.5 * s; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+    drawTempMeter();
+    for (const p of S.particles) { ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 1.5)); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, 2.6 * s, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+  }
+
+  function tempC() {
+    const e = S.energy;
+    return e < 0.3 ? 20 + e / 0.3 * 80 : 100 + (e - 0.3) / 0.7 * 2900;
+  }
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function drawTorch(O) {
+    if (!S.torch) return;
+    const x = O.x, base = H - 4 * s, len = Math.max(40 * s, base - (O.y + 95 * s));
+    ctx.save();
+    ctx.fillStyle = '#5b6b86'; rr(x - 9 * s, base - 16 * s, 18 * s, 22 * s, 3 * s); ctx.fill();
+    for (const [c, f, wd] of [['rgba(255,90,40,0.5)', 1, 18], ['rgba(255,170,60,0.72)', 0.72, 12], ['rgba(255,240,170,0.95)', 0.42, 6]]) {
+      const fl = 1 + 0.12 * Math.sin(S.t * 31 + f * 10) + 0.08 * Math.sin(S.t * 17);
+      const h = len * f * fl, w = wd * s * (1 + 0.15 * Math.sin(S.t * 23 + f));
+      ctx.fillStyle = c; ctx.beginPath();
+      ctx.moveTo(x - w, base - 16 * s);
+      ctx.quadraticCurveTo(x - w * 1.2, base - 16 * s - h * 0.5, x, base - 16 * s - h);
+      ctx.quadraticCurveTo(x + w * 1.2, base - 16 * s - h * 0.5, x + w, base - 16 * s);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawTempMeter() {
+    if (!(S.energy > 0.01 || S.torch)) return;
+    const w = 260 * s, h = 10 * s, x = W - w - 24 * s, y = 14 * s;
+    ctx.save();
+    ctx.fillStyle = 'rgba(11,23,36,0.82)'; rr(x - 8 * s, y - 6 * s, w + 16 * s, 58 * s, 8 * s); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; rr(x, y + 18 * s, w, h, h / 2); ctx.fill();
+    const f = Math.min(1, S.energy / 1.15);
+    const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, '#3aa0ff'); g.addColorStop(0.25, '#ffb347'); g.addColorStop(1, '#ff4d2e');
+    ctx.fillStyle = g; rr(x, y + 18 * s, Math.max(h, w * f), h, h / 2); ctx.fill();
+    const mark = (v, lbl) => { const mx = x + w * (v / 1.15); ctx.fillStyle = '#e8f1fa'; ctx.fillRect(mx - 1, y + 15 * s, 2, h + 6 * s); ctx.font = `700 ${Math.round(10.5 * s)}px "Nunito Sans", system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.fillText(lbl, mx, y + 44 * s); };
+    mark(0.3, 'boils'); mark(1, 'bonds break');
+    ctx.fillStyle = '#e8f1fa'; ctx.font = `700 ${Math.round(11.5 * s)}px "Nunito Sans", system-ui, sans-serif`; ctx.textAlign = 'left';
+    ctx.fillText('Temperature', x, y + 10 * s);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#ffb347'; ctx.font = `700 ${Math.round(12 * s)}px "JetBrains Mono", monospace`;
+    const t = Math.round(tempC() / (tempC() > 200 ? 50 : 1)) * (tempC() > 200 ? 50 : 1);
+    ctx.fillText(`~${t.toLocaleString()}°C`, x + w, y + 10 * s);
+    ctx.restore();
+  }
+
+  function badge(x, y, n, color, sub) {
+    const r = 15 * s;
+    ctx.save(); ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 10 * s;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    ctx.fillStyle = '#0b1724'; ctx.font = `800 ${Math.round(17 * s)}px "JetBrains Mono", monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n, x, y + 1);
+  }
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function frame(now) {
+    let dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if ($('slowBtn').getAttribute('aria-pressed') === 'true') dt *= 0.3;
+    update(dt); draw();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- input ----------
+  function syncAuto() { $('autoBtn').textContent = S.auto ? 'Stop' : 'Start'; $('autoBtn').setAttribute('aria-pressed', String(S.auto)); }
+  $('autoBtn').addEventListener('click', () => {
+    if (S.sites.every(x => x)) { reset(); }
+    S.auto = !S.auto; syncAuto(); if (S.auto) $('hint').hidden = true;
+  });
+  $('slowBtn').addEventListener('click', e => { const b = e.currentTarget; b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); });
+  $('resetBtn').addEventListener('click', reset);
+  function setTorch(on) { S.torch = on; $('torchBtn').setAttribute('aria-pressed', String(on)); if (on) { S.auto = false; syncAuto(); $('hint').hidden = true; } }
+  const tb = $('torchBtn');
+  tb.addEventListener('pointerdown', e => { setTorch(true); tb.setPointerCapture(e.pointerId); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) tb.addEventListener(ev, () => setTorch(false));
+  tb.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setTorch(true); } });
+  tb.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') setTorch(false); });
+  for (const id of ['speed', 'heat']) { const i = $(id), o = $(id + 'Out'); i.addEventListener('input', () => { o.textContent = i.value; }); }
+
+  const EXPLAIN = {
+    countO: ['Counting for oxygen', 'Circle every electron oxygen can count: its 4 own (the two pairs on top) plus both shared pairs (4 more). 4 + 4 = 8. Full!'],
+    countH: ['Counting for hydrogen', 'Each hydrogen counts the one pair it shares with oxygen: its own electron plus oxygen’s. That makes 2, which fills hydrogen’s only shell.'],
+    hog: ['Oxygen hogs a little', 'Sharing is not perfectly fair. Oxygen pulls the shared electrons a bit closer, so the oxygen end is slightly negative (δ−) and the hydrogen ends slightly positive (δ+). That is why water molecules stick to each other, and why water is a liquid instead of a gas.']
+  };
+  for (const id of ['countO', 'countH', 'hog']) {
+    $(id).addEventListener('click', e => {
+      const b = e.currentTarget, on = b.getAttribute('aria-pressed') !== 'true';
+      b.setAttribute('aria-pressed', String(on)); S[id] = on;
+      if (on) { $('phaseTitle').textContent = EXPLAIN[id][0]; $('phaseText').textContent = EXPLAIN[id][1]; }
+      else setPhase('water');
+    });
+  }
+  $('thirdH').addEventListener('click', () => {
+    if (S.hs.length > 2) return;
+    const h = newH(W * 0.1, H * 0.2, 6.2); h.extra = true; S.hs.push(h);
+    $('thirdH').disabled = true;
+    $('phaseTitle').textContent = 'A third hydrogen?';
+    $('phaseText').textContent = 'Drag the new hydrogen (red ring) to the oxygen. Will it bond?';
+  });
+
+  function ptr(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  let grab = null;
+  cv.addEventListener('pointerdown', e => {
+    const p = ptr(e), O = oPos();
+    let pick = null, bd = Infinity;
+    for (const h of S.hs) {
+      if (h.bonded) continue;
+      const hp = hPos(h, O), d = Math.hypot(p.x - hp.x, p.y - hp.y);
+      if (d < (H_R + 14) * s && d < bd) { bd = d; pick = h; }
+    }
+    if (pick) {
+      S.dragging = pick; pick.vx = pick.vy = 0; cv.classList.add('dragging'); cv.setPointerCapture(e.pointerId);
+      grab = { dx: pick.x - p.x, dy: pick.y - p.y }; $('hint').hidden = true;
+    }
+  });
+  cv.addEventListener('pointermove', e => { if (!S.dragging) return; const p = ptr(e); S.dragging.x = p.x + grab.dx; S.dragging.y = p.y + grab.dy; });
+  function endDrag() { S.dragging = null; cv.classList.remove('dragging'); }
+  cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return;
+    if (e.key === ' ') { e.preventDefault(); $('autoBtn').click(); }
+    else if (e.key === 'r' || e.key === 'R') reset();
+    else if (e.key === 'h' || e.key === 'H') setTorch(true);
+  });
+
+  window.addEventListener('keyup', e => { if (e.key === 'h' || e.key === 'H') setTorch(false); });
+  document.querySelectorAll('button, canvas').forEach(el => el.addEventListener('contextmenu', e => e.preventDefault()));
+  window.addEventListener('resize', resize);
+  resize(); reset();
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

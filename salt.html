@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Molecule Lab">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+</head>
+<body>
+<title>Electron Tug-of-War</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito+Sans:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root {
+    --ink: #0d1626;
+    --panel: #15223a;
+    --panel-2: #1c2c4a;
+    --line: #2a3d61;
+    --text: #e8eef8;
+    --muted: #9fb0cc;
+    --na: #f28c28;
+    --cl: #3fb950;
+    --el: #4fd8ff;
+    --energy: #ffd43b;
+    --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  html, body { background: var(--ink); color: var(--text); }
+  body { font-family: var(--body); font-size: 15px; line-height: 1.45; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 32px; display: grid; gap: 14px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 5vw, 40px); line-height: 1; margin: 0; letter-spacing: -0.5px; }
+  h1 .na { color: var(--na); } h1 .cl { color: var(--cl); }
+  .tag { color: var(--muted); font-size: 14px; max-width: 46ch; text-wrap: balance; }
+  .stage { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #0a1220; }
+  canvas { display: block; width: 100%; touch-action: none; cursor: grab; }
+  canvas.dragging { cursor: grabbing; }
+  .hint { position: absolute; left: 12px; bottom: 10px; font-size: 12.5px; color: var(--muted); background: rgba(13,22,38,.75); padding: 4px 10px; border-radius: 999px; pointer-events: none; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { font-family: var(--display); font-weight: 600; font-size: 16px; border: 0; border-radius: 10px; padding: 8px 16px 6px; cursor: pointer; color: var(--ink); background: var(--text); }
+  button.go { background: var(--el); }
+  button.torch { background: #ff7a45; }
+  button.torch[aria-pressed="true"] { background: #ffd43b; box-shadow: 0 0 18px #ff7a45; }
+  button.zap { background: var(--energy); }
+  button:disabled { opacity: .32; cursor: not-allowed; box-shadow: none; }
+  button.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--line); }
+  button[aria-pressed="true"].ghost { background: var(--panel-2); box-shadow: inset 0 0 0 1.5px var(--el); color: var(--el); }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--energy); outline-offset: 2px; }
+  .slider { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; flex: 1 1 220px; min-width: 0; }
+  .slider label { font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+  .slider output { font-family: var(--mono); font-size: 13px; color: var(--muted); min-width: 5ch; text-align: right; }
+  input[type=range] { width: 100%; accent-color: var(--el); }
+  #heat { accent-color: #ff7a45; }
+  .cards { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 820px) { .cards { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+  .card h2 { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin: 0; font-weight: 600; }
+  #phaseTitle { font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1.1; }
+  #phaseText { color: var(--text); font-size: 14.5px; }
+  .meter { position: relative; height: 18px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+  .meter .fill { position: absolute; inset: 0 auto 0 0; width: 0%; background: linear-gradient(90deg, #2c8a3c, var(--cl)); border-radius: 999px; transition: width .08s linear; }
+  .meter .grip { position: absolute; top: -2px; bottom: -2px; right: 12%; width: 3px; background: var(--na); }
+  .mrow { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); }
+  .mrow b { color: var(--na); } .mrow b.g { color: var(--cl); }
+  #tugNote { font-size: 13.5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: right; padding: 3px 4px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 700; font-size: 12px; }
+  td { font-family: var(--mono); }
+  td.name { font-family: var(--body); font-weight: 700; }
+  .q { font-weight: 700; }
+  .pos { color: var(--na); } .neg { color: var(--cl); } .zero { color: var(--muted); }
+  .keys { font-size: 12.5px; color: var(--muted); }
+  kbd { font-family: var(--mono); font-size: 11.5px; background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; color: var(--text); }
+  .flashy { animation: pop .5s ease-out; }
+  @keyframes pop { from { transform: scale(1.06); } to { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .flashy { animation: none; } .meter .fill { transition: none; } }
+  /* touch-friendly */
+  html { -webkit-text-size-adjust: 100%; }
+  body { -webkit-tap-highlight-color: transparent; }
+  button, canvas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+  canvas { touch-action: none; }
+  @media (hover: none) { kbd { display: none; } }
+</style>
+<a href="index.html" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
+
+
+<div class="wrap">
+  <header>
+    <h1>Electron <span class="na">Tug</span>-of-<span class="cl">War</span></h1>
+    <div class="tag">Push sodium and chlorine together. Watch chlorine steal an electron, then see plus and minus snap into salt.</div>
+  </header>
+
+  <div class="stage">
+    <canvas id="c" aria-label="Animation of a sodium atom and a chlorine atom forming table salt"></canvas>
+    <div class="hint" id="hint">Drag the orange sodium atom, or press Start</div>
+  </div>
+
+  <div class="controls">
+    <div class="btns">
+      <button class="go" id="autoBtn" aria-pressed="false">Start</button>
+      <button class="ghost" id="slowBtn" aria-pressed="false">Slow-mo</button>
+      <button class="ghost" id="resetBtn">Reset</button>
+      <button class="torch" id="torchBtn" aria-pressed="false" disabled>Torch (hold)</button>
+      <button class="zap" id="zapBtn" disabled>Zap with electricity</button>
+    </div>
+    <div class="slider"><label for="speed">Approach speed</label><input type="range" id="speed" min="0" max="100" value="35"><output id="speedOut">35</output></div>
+    <div class="slider"><label for="heat">Heat (jiggle)</label><input type="range" id="heat" min="0" max="100" value="30"><output id="heatOut">30</output></div>
+  </div>
+
+  <div class="cards">
+    <div class="card" id="phaseCard">
+      <h2>What's happening</h2>
+      <div id="phaseTitle">Two neutral atoms</div>
+      <div id="phaseText"></div>
+    </div>
+    <div class="card">
+      <h2>Tug-of-war for the electron</h2>
+      <div class="meter"><div class="fill" id="pullFill"></div><div class="grip" title="Sodium's grip"></div></div>
+      <div class="mrow"><span><b class="g">Chlorine's pull</b> grows as they get closer</span><span><b>Sodium's grip</b></span></div>
+      <div id="tugNote">Chlorine is too far away to pull.</div>
+    </div>
+    <div class="card">
+      <h2>Charge count</h2>
+      <table>
+        <thead><tr><th>Atom</th><th>Protons +</th><th>Electrons −</th><th>Charge</th></tr></thead>
+        <tbody>
+          <tr><td class="name" style="color:var(--na)" id="naName">Sodium</td><td>11</td><td id="naE">11</td><td class="q zero" id="naQ">0</td></tr>
+          <tr><td class="name" style="color:var(--cl)" id="clName">Chlorine</td><td>17</td><td id="clE">17</td><td class="q zero" id="clQ">0</td></tr>
+        </tbody>
+      </table>
+      <div class="keys">Keys: <kbd>←↑↓→</kbd> move sodium · <kbd>Space</kbd> start/stop · <kbd>R</kbd> reset · <kbd>H</kbd> hold torch · <kbd>Z</kbd> zap</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('c');
+  const ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const COL = { na: '#f28c28', cl: '#3fb950', el: '#4fd8ff', inner: '#cfd9e8', energy: '#ffd43b' };
+  // shell radii (unscaled)
+  const NA_R = [16, 30, 52], NAP_R = [16, 30];
+  const CL_R = [14, 27, 42], CLM_R = [14, 27, 44];
+  const OMEGA = [1.7, 1.05, 0.62];
+
+  let W = 800, H = 420, s = 1, dpr = 1;
+  const S = {};
+
+  const PHASES = {
+    ready:   ['Two neutral atoms', 'Sodium has 11 protons and 11 electrons. Chlorine has 17 of each. Both are balanced, so neither has a charge. Look at the outer shells: sodium has a lonely 1, chlorine has 7 and one empty seat.'],
+    close:   ['Getting close...', 'Chlorine’s nucleus is pulling on sodium’s far-away outer electron. Sodium barely holds on, because 10 inner electrons block most of its pull.'],
+    jump:    ['Jump!', 'Chlorine wins the tug-of-war. The electron leaps across and fills chlorine’s empty seat. Now both atoms have a full outer shell of 8.'],
+    attract: ['Opposites attract', 'Sodium lost an electron, so it is now +1. Chlorine gained one, so it is now −1. Plus and minus pull on each other like magnets.'],
+    heating: ['Adding heat', 'The torch pours energy in. The ions shake harder and harder. Keep heating until they shake loose from each other.'],
+    melted:  ['Melted apart!', 'The ions shook loose. This is melted salt, at about 801°C (1474°F). But look: chlorine kept the electron, so they are still Na⁺ and Cl⁻. Let go of the torch and they snap right back. To get the electron back, zap it with electricity.'],
+    zap:     ['Zap!', 'Electricity pulls the extra electron off chloride and pushes one back onto sodium through the wire. They are neutral atoms again. Factories make sodium and chlorine from salt this way, and it takes a lot of energy.'],
+    bonded:  ['Snap! Table salt', 'The ions lock together and release a burst of energy. In the real reaction that is a flash of heat and light. Na⁺ + Cl⁻ = NaCl, the salt on your fries.']
+  };
+
+  function reset() {
+    Object.assign(S, {
+      phase: 'ready', auto: false, t: 0,
+      na: { x: W * 0.2, y: H * 0.52, vx: 0 },
+      cl: { x: W * 0.8, y: H * 0.5, vx: 0 },
+      jumpT: 0, transferred: false, bondT: 0,
+      particles: [], rings: [], shake: 0, dragging: false, keys: {},
+      pull: 0, naShellFade: 1, pairOff: null, energy: 0, torch: false, zapT: 0, meltCx: 0, meltCy: 0
+    });
+    $('autoBtn').textContent = 'Start'; $('autoBtn').setAttribute('aria-pressed', 'false');
+    $('hint').hidden = false;
+    $('torchBtn').setAttribute('aria-pressed', 'false');
+    setPhase('ready');
+    ledger(false);
+  }
+
+  function setPhase(p) {
+    S.phase = p;
+    $('phaseTitle').textContent = PHASES[p][0];
+    $('phaseText').textContent = PHASES[p][1];
+    const card = $('phaseCard');
+    card.classList.remove('flashy'); void card.offsetWidth; card.classList.add('flashy');
+  }
+
+  function ledger(done) {
+    $('naE').textContent = done ? '10' : '11';
+    $('clE').textContent = done ? '18' : '17';
+    $('naQ').textContent = done ? '+1' : '0';
+    $('clQ').textContent = done ? '−1' : '0';
+    $('naQ').className = 'q ' + (done ? 'pos' : 'zero');
+    $('clQ').className = 'q ' + (done ? 'neg' : 'zero');
+    $('naName').textContent = done ? 'Sodium ion' : 'Sodium';
+    $('clName').textContent = done ? 'Chloride ion' : 'Chlorine';
+  }
+
+  function resize() {
+    const r = cv.getBoundingClientRect();
+    const oldW = W, oldH = H;
+    W = Math.max(300, r.width);
+    H = Math.round(Math.min(460, Math.max(300, W * 0.52)));
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    s = Math.max(0.7, Math.min(1.75, Math.min(W / 820, H / 420) * 1.4));
+    if (S.na) { for (const a of [S.na, S.cl]) { a.x *= W / oldW; a.y *= H / oldH; } }
+  }
+
+  const triggerD = () => (NA_R[2] + CL_R[2]) * s * 1.38;
+  const bondD = () => (NAP_R[1] + CLM_R[2]) * s * 1.06;
+  const heat = () => +$('heat').value / 100;
+  const speed = () => +$('speed').value;
+
+  function jiggle(seed) {
+    const h = heat() + (S.energy || 0) * 1.4, t = S.t;
+    const a = h * 9 * s;
+    return {
+      x: a * (Math.sin(t * 7.1 + seed) + 0.6 * Math.sin(t * 12.7 + seed * 2.3)),
+      y: a * (Math.cos(t * 6.3 + seed * 1.7) + 0.6 * Math.sin(t * 11.3 + seed))
+    };
+  }
+
+  function drawPos() {
+    const jn = jiggle(1.3), jc = jiggle(4.1);
+    if (S.phase === 'bonded' || S.phase === 'heating') {
+      const jp = jiggle(2.2), r = (heat() * 2.5 + S.energy * 9) * s;
+      return { na: { x: S.na.x + jp.x + jn.x * 0.15, y: S.na.y + jp.y }, cl: { x: S.cl.x + jp.x - jn.x * 0.15, y: S.cl.y + jp.y + r * Math.sin(S.t * 9) } };
+    }
+    return { na: { x: S.na.x + jn.x, y: S.na.y + jn.y }, cl: { x: S.cl.x + jc.x, y: S.cl.y + jc.y } };
+  }
+
+  function clampAtom(a, R) {
+    a.x = Math.max(R, Math.min(W - R, a.x));
+    a.y = Math.max(R + 16, Math.min(H - R - 30, a.y));
+  }
+
+  // ---------- update ----------
+  function update(dt) {
+    S.t += dt;
+    const P = drawPos();
+    const dx = P.cl.x - P.na.x, dy = P.cl.y - P.na.y;
+    const d = Math.hypot(dx, dy);
+
+    // keyboard control of sodium
+    const kv = 170 * s * dt;
+    if (!S.dragging) {
+      if (S.keys.ArrowLeft) S.na.x -= kv;
+      if (S.keys.ArrowRight) S.na.x += kv;
+      if (S.keys.ArrowUp) S.na.y -= kv;
+      if (S.keys.ArrowDown) S.na.y += kv;
+    }
+
+    if (S.phase === 'ready' || S.phase === 'close') {
+      if (S.auto) {
+        const v = speed() * 1.8 * s * dt;
+        const mx = (S.na.x + S.cl.x) / 2, my = (S.na.y + S.cl.y) / 2;
+        for (const a of [S.na, S.cl]) {
+          const ax = mx - a.x, ay = my - a.y, L = Math.hypot(ax, ay) || 1;
+          if (L > 1) { a.x += ax / L * Math.min(v, L); a.y += ay / L * Math.min(v, L) * 0.6; }
+        }
+      }
+      S.pull = Math.min(1.15, Math.pow(triggerD() / Math.max(d, 1), 3));
+      if (d < triggerD() * 1.9 && S.phase === 'ready') setPhase('close');
+      if (d >= triggerD() * 1.9 && S.phase === 'close') setPhase('ready');
+      if (d <= triggerD()) { S.phase = 'jump'; S.jumpT = 0; setPhase('jump'); S.auto = false; syncAuto(); }
+    } else if (S.phase === 'jump') {
+      S.jumpT += dt / 0.95;
+      S.pull = 1.15;
+      S.naShellFade = Math.max(0, 1 - S.jumpT * 1.2);
+      if (S.jumpT >= 1) {
+        S.transferred = true; ledger(true);
+        S.na.vx = 0; S.cl.vx = 0;
+        setPhase('attract');
+        S.rings.push({ x: P.cl.x, y: P.cl.y, r: 10 * s, a: 0.9, c: COL.el });
+      }
+    } else if (S.phase === 'attract') {
+      const G = 1.25e6 * s * s * s;
+      const a = G / Math.max(d * d, 1);
+      const ux = dx / (d || 1), uy = dy / (d || 1);
+      S.na.vx += a * 0.55 * dt; S.cl.vx += a * 0.45 * dt;
+      S.na.x += ux * S.na.vx * dt; S.na.y += uy * S.na.vx * dt;
+      S.cl.x -= ux * S.cl.vx * dt; S.cl.y -= uy * S.cl.vx * dt;
+      if (d <= bondD()) {
+        // settle exactly at bond distance
+        const cx = (S.na.x + S.cl.x) / 2, cy = (S.na.y + S.cl.y) / 2;
+        const bd = bondD() / 2;
+        S.na.x = cx - ux * bd; S.na.y = cy - uy * bd;
+        S.cl.x = cx + ux * bd; S.cl.y = cy + uy * bd;
+        S.phase = 'bonded'; setPhase('bonded'); S.bondT = 0;
+        burst(cx, cy);
+      }
+    } else if (S.phase === 'bonded' || S.phase === 'heating') {
+      S.bondT += dt;
+      if (S.torch && S.phase === 'bonded') setPhase('heating');
+      if (!S.torch && S.phase === 'heating' && S.energy < 0.03) setPhase('bonded');
+      if (S.energy >= 1) {
+        S.meltCx = (S.na.x + S.cl.x) / 2; S.meltCy = (S.na.y + S.cl.y) / 2;
+        setPhase('melted');
+        S.rings.push({ x: S.meltCx, y: S.meltCy, r: 12 * s, a: 0.9, c: '#ff7a45' });
+      }
+    } else if (S.phase === 'melted') {
+      const ux = dx / (d || 1), uy = dy / (d || 1);
+      const D = bondD() * (1.25 + 1.5 * Math.min(1.2, S.energy));
+      const k = Math.min(1, dt * 3);
+      S.na.x += ((S.meltCx - ux * D / 2) - S.na.x) * k; S.na.y += ((S.meltCy - uy * D / 2) - S.na.y) * k;
+      S.cl.x += ((S.meltCx + ux * D / 2) - S.cl.x) * k; S.cl.y += ((S.meltCy + uy * D / 2) - S.cl.y) * k;
+      if (!S.torch && S.energy < 0.6) { S.na.vx = 0; S.cl.vx = 0; setPhase('attract'); }
+    } else if (S.phase === 'zap') {
+      S.zapT += dt / 2.0;
+      if (S.zapT >= 1) {
+        S.transferred = false; S.naShellFade = 1; S.energy = 0; S.pull = 0;
+        ledger(false);
+        const cx = (S.na.x + S.cl.x) / 2, cy = (S.na.y + S.cl.y) / 2, half = triggerD() * 1.15;
+        S.na.x = cx - half; S.cl.x = cx + half; S.na.y = cy; S.cl.y = cy;
+        setPhase('ready');
+        S.rings.push({ x: S.na.x, y: S.na.y, r: 10 * s, a: 0.9, c: COL.el });
+      }
+    }
+
+    // torch energy in / cooling out
+    const canHeat = S.phase === 'bonded' || S.phase === 'heating' || S.phase === 'melted';
+    if (S.torch && canHeat) S.energy = Math.min(1.3, S.energy + dt * 0.42);
+    else if (S.phase !== 'zap') S.energy = Math.max(0, S.energy - dt * 0.2);
+    if (S.torch && !canHeat) setTorch(false);
+    const zOk = S.phase === 'melted';
+    if ($('zapBtn').disabled === zOk) $('zapBtn').disabled = !zOk;
+    const tOk = canHeat;
+    if ($('torchBtn').disabled === tOk) $('torchBtn').disabled = !tOk;
+
+    if (S.phase === 'ready' || S.phase === 'close') {
+      clampAtom(S.na, NA_R[2] * s); clampAtom(S.cl, CL_R[2] * s);
+    }
+    if (S.phase === 'melted') {
+      S.meltCx = Math.max(bondD() * 1.8, Math.min(W - bondD() * 1.8, S.meltCx));
+    }
+
+    // particles
+    for (const p of S.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.97; p.vy *= 0.97; p.life -= dt; }
+    S.particles = S.particles.filter(p => p.life > 0);
+    for (const r of S.rings) { r.r += 260 * s * dt; r.a -= dt * 1.1; }
+    S.rings = S.rings.filter(r => r.a > 0);
+    S.shake = Math.max(0, S.shake - dt);
+
+    updateTug();
+  }
+
+  function burst(x, y) {
+    const n = reduceMotion ? 14 : 46;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, v = (120 + Math.random() * 260) * s;
+      S.particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.7 + Math.random() * 0.7, c: Math.random() < 0.6 ? COL.energy : '#ff9f43' });
+    }
+    S.rings.push({ x, y, r: 20 * s, a: 1, c: COL.energy });
+    S.rings.push({ x, y, r: 5 * s, a: 0.8, c: '#ffffff' });
+    if (!reduceMotion) S.shake = 0.35;
+  }
+
+  function updateTug() {
+    const pct = Math.min(100, (S.pull / 1.15) * 100);
+    $('pullFill').style.width = pct + '%';
+    let note;
+    if (S.phase === 'melted') note = 'Heat shook the ions apart, but chlorine is still keeping the electron.';
+    else if (S.phase === 'zap') note = 'Electricity is moving the electron back to sodium...';
+    else if (S.transferred || S.phase === 'jump') note = 'Chlorine won! The electron is chlorine’s now.';
+    else if (S.pull < 0.15) note = 'Chlorine is too far away to pull.';
+    else if (S.pull < 0.6) note = 'Chlorine starts to tug on sodium’s outer electron...';
+    else note = 'Almost! Sodium’s grip is slipping...';
+    const el = $('tugNote'); if (el.textContent !== note) el.textContent = note;
+  }
+
+  // ---------- drawing ----------
+  function bg() {
+    const h = heat();
+    const g = ctx.createRadialGradient(W / 2, H * 0.55, 10, W / 2, H * 0.55, Math.max(W, H) * 0.75);
+    g.addColorStop(0, `rgba(${40 + h * 70},${40 + h * 10},${70 - h * 30},1)`);
+    g.addColorStop(1, '#0a1220');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(120,150,200,0.07)'; ctx.lineWidth = 1;
+    const step = 32 * s;
+    ctx.beginPath();
+    for (let x = (W / 2) % step; x < W; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for (let y = (H / 2) % step; y < H; y += step) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+    ctx.stroke();
+  }
+
+  function ringPath(x, y, r, alpha) {
+    ctx.save(); ctx.setLineDash([4, 5]); ctx.strokeStyle = `rgba(190,210,245,${0.28 * alpha})`; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
+
+  function electron(x, y, color, glow, r = 4.4) {
+    ctx.save();
+    if (glow) { ctx.shadowColor = color; ctx.shadowBlur = 16 * s; }
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r * s, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function emptySeat(x, y) {
+    ctx.save(); ctx.setLineDash([2.5, 2.5]); ctx.strokeStyle = 'rgba(232,238,248,0.85)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(x, y, 4.6 * s, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
+
+  function nucleus(x, y, r, color, label) {
+    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
+    g.addColorStop(0, '#fff'); g.addColorStop(0.25, color); g.addColorStop(1, shade(color, -0.35));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0d1626'; ctx.font = `800 ${Math.round(11 * s)}px "JetBrains Mono", monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x, y + 0.5);
+  }
+
+  function shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    r = Math.round(r * (1 + amt)); g = Math.round(g * (1 + amt)); b = Math.round(b * (1 + amt));
+    return `rgb(${Math.max(0, r)},${Math.max(0, g)},${Math.max(0, b)})`;
+  }
+
+  function shellPos(x, y, r, i, n, shellIdx, phase) {
+    const a = S.t * OMEGA[shellIdx] + phase + (i / n) * Math.PI * 2;
+    return { x: x + Math.cos(a) * r, y: y + Math.sin(a) * r };
+  }
+
+  function label(x, y, text, color, sub) {
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = color; ctx.font = `800 ${Math.round(18 * s)}px "Baloo 2", system-ui, sans-serif`;
+    ctx.fillText(text, x, y);
+    if (sub) { ctx.fillStyle = 'rgba(200,215,240,0.8)'; ctx.font = `700 ${Math.round(11.5 * s)}px "Nunito Sans", system-ui, sans-serif`; ctx.fillText(sub, x, y + 15 * s); }
+  }
+
+  function badge(x, y, text, color) {
+    const r = 13 * s;
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0d1626'; ctx.font = `800 ${Math.round(14 * s)}px "JetBrains Mono", monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y + 1);
+  }
+
+  let naOuterPos = null, clSeatPos = null;
+  const side = () => (S.cl.x >= S.na.x ? 1 : -1);
+
+  function drawSodium(p) {
+    const done = S.transferred;
+    const R = NA_R.map(r => r * s);
+    ringPath(p.x, p.y, R[0], 1); ringPath(p.x, p.y, R[1], 1);
+    const fade = S.phase === 'zap' ? S.zapT : (done ? 0 : S.naShellFade);
+    if (fade > 0) ringPath(p.x, p.y, R[2], fade);
+    for (let i = 0; i < 2; i++) { const q = shellPos(p.x, p.y, R[0], i, 2, 0, 0.3); electron(q.x, q.y, COL.inner, false, 3.6); }
+    for (let i = 0; i < 8; i++) { const q = shellPos(p.x, p.y, R[1], i, 8, 1, 0.1); electron(q.x, q.y, COL.inner, false, 3.9); }
+    naOuterPos = shellPos(p.x, p.y, R[2], 0, 1, 2, 2.4);
+    if (S.phase === 'ready' || S.phase === 'close') electron(naOuterPos.x, naOuterPos.y, COL.el, true, 5.2);
+    nucleus(p.x, p.y, 11 * s, COL.na, '11+');
+    const ly = p.y + (done ? R[1] : R[2]) + 24 * s;
+    label(p.x, ly, done ? 'Na⁺' : 'Na', COL.na, done ? 'sodium ion' : 'sodium');
+    if (done) badge(p.x - side() * R[1] * 0.85, p.y - R[1] * 0.9, '+1', COL.na);
+  }
+
+  function drawChlorine(p) {
+    const done = S.transferred;
+    const R = (done ? CLM_R : CL_R).map(r => r * s);
+    ringPath(p.x, p.y, R[0], 1); ringPath(p.x, p.y, R[1], 1); ringPath(p.x, p.y, R[2], 1);
+    for (let i = 0; i < 2; i++) { const q = shellPos(p.x, p.y, R[0], i, 2, 0, 1.1); electron(q.x, q.y, COL.inner, false, 3.6); }
+    for (let i = 0; i < 8; i++) { const q = shellPos(p.x, p.y, R[1], i, 8, 1, 0.7); electron(q.x, q.y, COL.inner, false, 3.9); }
+    for (let i = 0; i < 8; i++) {
+      const q = shellPos(p.x, p.y, R[2], i, 8, 2, 0.2);
+      if (i === 7) {
+        clSeatPos = q;
+        if (done && S.phase !== 'zap') electron(q.x, q.y, COL.el, true, 5.2); else emptySeat(q.x, q.y);
+      } else electron(q.x, q.y, COL.inner, false, 3.9);
+    }
+    nucleus(p.x, p.y, 12 * s, COL.cl, '17+');
+    label(p.x, p.y + R[2] + 24 * s, done ? 'Cl⁻' : 'Cl', COL.cl, done ? 'chloride ion' : 'chlorine');
+    if (done) badge(p.x + side() * R[2] * 0.75, p.y - R[2] * 0.85, '−1', COL.cl);
+  }
+
+  function drawJumpingElectron() {
+    if (S.phase !== 'jump' || !naOuterPos || !clSeatPos) return;
+    const t = Math.min(1, S.jumpT), e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const a = naOuterPos, b = clSeatPos;
+    const cx = (a.x + b.x) / 2, cy = Math.min(a.y, b.y) - 70 * s;
+    const x = (1 - e) * (1 - e) * a.x + 2 * (1 - e) * e * cx + e * e * b.x;
+    const y = (1 - e) * (1 - e) * a.y + 2 * (1 - e) * e * cy + e * e * b.y;
+    // trail
+    ctx.save(); ctx.strokeStyle = 'rgba(79,216,255,0.35)'; ctx.lineWidth = 2 * s; ctx.setLineDash([3, 6]);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(cx, cy, b.x, b.y); ctx.stroke(); ctx.restore();
+    electron(x, y, COL.el, true, 6);
+  }
+
+  function drawAttraction(P) {
+    if (S.phase !== 'attract') return;
+    const n = 5, pulse = (S.t * 2.2) % 1;
+    ctx.save();
+    for (let i = 0; i < n; i++) {
+      const f = (i + pulse) / n;
+      const x = P.na.x + (P.cl.x - P.na.x) * f, y = P.na.y + (P.cl.y - P.na.y) * f;
+      ctx.fillStyle = `rgba(255,212,59,${0.25 + 0.5 * Math.sin(f * Math.PI)})`;
+      ctx.beginPath(); ctx.arc(x, y, 3 * s, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawFx() {
+    for (const r of S.rings) {
+      ctx.save(); ctx.strokeStyle = r.c; ctx.globalAlpha = Math.max(0, r.a); ctx.lineWidth = 3 * s;
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
+    for (const p of S.particles) {
+      ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, p.life)); ctx.fillStyle = p.c;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3.2 * s, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+  }
+
+  function drawBanner(P) {
+    if (S.phase !== 'bonded' && S.phase !== 'heating') return;
+    const a = Math.min(1, S.bondT * 2);
+    const x = (P.na.x + P.cl.x) / 2, y = Math.min(P.na.y, P.cl.y) - 78 * s;
+    ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = COL.energy; ctx.font = `800 ${Math.round(30 * s)}px "Baloo 2", system-ui, sans-serif`;
+    ctx.fillText('NaCl', x, y);
+    ctx.fillStyle = '#e8eef8'; ctx.font = `700 ${Math.round(13 * s)}px "Nunito Sans", system-ui, sans-serif`;
+    ctx.fillText('table salt · energy released!', x, y + 19 * s);
+    ctx.restore();
+  }
+
+  function thermo() {
+    const h = heat();
+    const x = W - 22 * s, top = 20 * s, bot = H - 40 * s;
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'; roundRect(x - 5 * s, top, 10 * s, bot - top, 5 * s); ctx.fill();
+    const lvl = bot - (bot - top) * (0.08 + 0.92 * h);
+    const g = ctx.createLinearGradient(0, bot, 0, top); g.addColorStop(0, '#ffb347'); g.addColorStop(1, '#ff4d2e');
+    ctx.fillStyle = g; roundRect(x - 5 * s, lvl, 10 * s, bot - lvl, 5 * s); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, bot + 6 * s, 9 * s, 0, Math.PI * 2); ctx.fillStyle = '#ff7a45'; ctx.fill();
+    ctx.restore();
+  }
+  function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+  function drawTorch(P) {
+    if (!S.torch) return;
+    const x = (P.na.x + P.cl.x) / 2, base = H - 6 * s;
+    const top = Math.max(P.na.y, P.cl.y) + 20 * s;
+    const len = Math.max(40 * s, base - top);
+    ctx.save();
+    // nozzle
+    ctx.fillStyle = '#5b6b86'; roundRect(x - 9 * s, base - 16 * s, 18 * s, 22 * s, 3 * s); ctx.fill();
+    const layers = [['rgba(255,90,40,0.55)', 1, 18], ['rgba(255,170,60,0.75)', 0.75, 12], ['rgba(255,240,170,0.95)', 0.45, 6]];
+    for (const [c, f, wdt] of layers) {
+      const fl = 1 + 0.12 * Math.sin(S.t * 31 + f * 10) + 0.08 * Math.sin(S.t * 17);
+      const h = len * f * fl, w = wdt * s * (1 + 0.15 * Math.sin(S.t * 23 + f));
+      ctx.fillStyle = c; ctx.beginPath();
+      ctx.moveTo(x - w, base - 16 * s);
+      ctx.quadraticCurveTo(x - w * 1.2, base - 16 * s - h * 0.5, x, base - 16 * s - h);
+      ctx.quadraticCurveTo(x + w * 1.2, base - 16 * s - h * 0.5, x + w, base - 16 * s);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawEnergyMeter() {
+    if (!(S.energy > 0.01 || S.torch)) return;
+    const x = 16 * s, y = 16 * s, w = 250 * s, h = 10 * s;
+    ctx.save();
+    ctx.fillStyle = 'rgba(13,22,38,0.8)'; roundRect(x - 8 * s, y - 6 * s, w + 16 * s, 44 * s, 8 * s); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; roundRect(x, y + 18 * s, w, h, h / 2); ctx.fill();
+    const f = Math.min(1, S.energy / 1.3);
+    const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, '#ffb347'); g.addColorStop(1, '#ff4d2e');
+    ctx.fillStyle = g; roundRect(x, y + 18 * s, Math.max(h, w * f), h, h / 2); ctx.fill();
+    const mx = x + w / 1.3;
+    ctx.fillStyle = '#e8eef8'; ctx.fillRect(mx - 1, y + 15 * s, 2, h + 6 * s);
+    ctx.font = `700 ${Math.round(11.5 * s)}px "Nunito Sans", system-ui, sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('Heat energy put in', x, y + 10 * s);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#ffb347'; ctx.fillText('melts apart', x + w, y + 10 * s);
+    ctx.restore();
+  }
+
+  function drawZap(P) {
+    if (S.phase !== 'zap' && !(S.phase === 'melted' && !S.torch)) return;
+    const bx = (P.na.x + P.cl.x) / 2, by = H - 34 * s;
+    const bw = 64 * s, bh = 26 * s;
+    ctx.save();
+    const on = S.phase === 'zap';
+    ctx.globalAlpha = on ? 1 : 0.45;
+    // wires
+    ctx.strokeStyle = on ? '#ffd43b' : 'rgba(255,212,59,0.6)'; ctx.lineWidth = 2 * s; ctx.setLineDash(on ? [] : [4, 5]);
+    ctx.beginPath(); ctx.moveTo(P.cl.x, P.cl.y + 18 * s); ctx.lineTo(P.cl.x, by); ctx.lineTo(bx + bw / 2, by); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx - bw / 2, by); ctx.lineTo(P.na.x, by); ctx.lineTo(P.na.x, P.na.y + 18 * s); ctx.stroke();
+    ctx.setLineDash([]);
+    // battery
+    ctx.fillStyle = '#2a3d61'; roundRect(bx - bw / 2, by - bh / 2, bw, bh, 5 * s); ctx.fill();
+    ctx.fillStyle = '#ffd43b'; roundRect(bx + bw / 2, by - 5 * s, 5 * s, 10 * s, 2 * s); ctx.fill();
+    ctx.fillStyle = '#e8eef8'; ctx.font = `800 ${Math.round(12 * s)}px "JetBrains Mono", monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('−  BATT  +', bx, by + 1);
+    ctx.restore();
+    if (!on || !clSeatPos || !naOuterPos) return;
+    const t = Math.min(1, S.zapT);
+    const pts = [clSeatPos, { x: P.cl.x, y: by }, { x: bx, y: by }, { x: P.na.x, y: by }, naOuterPos];
+    const segs = []; let tot = 0;
+    for (let i = 0; i < pts.length - 1; i++) { const L = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y); segs.push(L); tot += L; }
+    let dist = t * tot, i = 0;
+    while (i < segs.length - 1 && dist > segs[i]) { dist -= segs[i]; i++; }
+    const f = segs[i] ? Math.min(1, dist / segs[i]) : 1;
+    const ex = pts[i].x + (pts[i + 1].x - pts[i].x) * f, ey = pts[i].y + (pts[i + 1].y - pts[i].y) * f;
+    electron(ex, ey, COL.el, true, 6);
+  }
+
+  function draw() {
+    ctx.save();
+    if (S.shake > 0) ctx.translate((Math.random() - 0.5) * 8 * S.shake * s, (Math.random() - 0.5) * 8 * S.shake * s);
+    bg(); thermo();
+    const P = drawPos();
+    drawAttraction(P);
+    drawTorch(P);
+    drawChlorine(P.cl);
+    drawSodium(P.na);
+    drawZap(P);
+    drawJumpingElectron();
+    drawFx();
+    drawBanner(P);
+    drawEnergyMeter();
+    ctx.restore();
+  }
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function frame(now) {
+    let dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if ($('slowBtn').getAttribute('aria-pressed') === 'true') dt *= 0.3;
+    update(dt); draw();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- input ----------
+  function syncAuto() {
+    $('autoBtn').textContent = S.auto ? 'Stop' : 'Start';
+    $('autoBtn').setAttribute('aria-pressed', String(S.auto));
+  }
+  $('autoBtn').addEventListener('click', () => {
+    if (S.phase === 'bonded') { reset(); }
+    if (S.phase !== 'ready' && S.phase !== 'close') return;
+    S.auto = !S.auto; syncAuto(); if (S.auto) $('hint').hidden = true;
+  });
+  $('slowBtn').addEventListener('click', e => {
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', String(on));
+  });
+  $('resetBtn').addEventListener('click', reset);
+  function setTorch(on) {
+    S.torch = on;
+    $('torchBtn').setAttribute('aria-pressed', String(on));
+  }
+  const tb = $('torchBtn');
+  tb.addEventListener('pointerdown', e => { if (!tb.disabled) { setTorch(true); tb.setPointerCapture(e.pointerId); } });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) tb.addEventListener(ev, () => setTorch(false));
+  tb.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !tb.disabled) { e.preventDefault(); setTorch(true); } });
+  tb.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') setTorch(false); });
+  $('zapBtn').addEventListener('click', () => {
+    if (S.phase !== 'melted') return;
+    setTorch(false); S.zapT = 0; setPhase('zap');
+  });
+  for (const id of ['speed', 'heat']) {
+    const inp = $(id), out = $(id + 'Out');
+    inp.addEventListener('input', () => { out.textContent = inp.value; });
+  }
+
+  function ptr(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  let grab = null;
+  cv.addEventListener('pointerdown', e => {
+    const p = ptr(e), P = drawPos();
+    const R = (S.transferred ? NAP_R[1] : NA_R[2]) * s + 14 * s;
+    if (Math.hypot(p.x - P.na.x, p.y - P.na.y) < R) {
+      S.dragging = true; cv.classList.add('dragging'); cv.setPointerCapture(e.pointerId);
+      grab = { dx: S.na.x - p.x, dy: S.na.y - p.y, cdx: S.cl.x - S.na.x, cdy: S.cl.y - S.na.y };
+      $('hint').hidden = true;
+    }
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!S.dragging) return;
+    const p = ptr(e);
+    if (S.phase === 'jump' || S.phase === 'attract') return;
+    S.na.x = p.x + grab.dx; S.na.y = p.y + grab.dy;
+    if (S.phase === 'bonded') { S.cl.x = S.na.x + grab.cdx; S.cl.y = S.na.y + grab.cdy; }
+  });
+  const endDrag = () => { S.dragging = false; cv.classList.remove('dragging'); };
+  cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return;
+    if (e.key.startsWith('Arrow')) { S.keys[e.key] = true; $('hint').hidden = true; e.preventDefault(); }
+    else if (e.key === ' ') { e.preventDefault(); $('autoBtn').click(); }
+    else if (e.key === 'r' || e.key === 'R') reset();
+    else if ((e.key === 'h' || e.key === 'H') && !$('torchBtn').disabled) setTorch(true);
+    else if (e.key === 'z' || e.key === 'Z') $('zapBtn').click();
+  });
+  window.addEventListener('keyup', e => { if (e.key.startsWith('Arrow')) S.keys[e.key] = false; if (e.key === 'h' || e.key === 'H') setTorch(false); });
+
+  document.querySelectorAll('button, canvas').forEach(el => el.addEventListener('contextmenu', e => e.preventDefault()));
+  window.addEventListener('resize', resize);
+  resize(); reset();
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

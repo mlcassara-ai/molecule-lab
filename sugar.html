@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Molecule Lab">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+</head>
+<body>
+<title>Sugar Factory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito+Sans:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root {
+    --ink: #17120b;
+    --panel: #241b10;
+    --panel-2: #33261a;
+    --line: #4a3822;
+    --text: #fbf3e6;
+    --muted: #c9b597;
+    --gold: #f3b33d;
+    --c: #2b2b2b;
+    --o: #ef4b43;
+    --el: #4fd8ff;
+    --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  html, body { background: var(--ink); color: var(--text); }
+  body { font-family: var(--body); font-size: 15px; line-height: 1.45; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 32px; display: grid; gap: 14px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 5vw, 40px); line-height: 1; margin: 0; letter-spacing: -0.5px; }
+  h1 span { color: var(--gold); }
+  .tag { color: var(--muted); font-size: 14px; max-width: 50ch; text-wrap: balance; }
+  .stage { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #120d07; }
+  canvas { display: block; width: 100%; touch-action: none; }
+  .hint { position: absolute; left: 50%; transform: translateX(-50%); bottom: 10px; font-size: 12.5px; color: var(--muted); background: rgba(23,18,11,.82); padding: 4px 10px; border-radius: 999px; pointer-events: none; white-space: nowrap; }
+  .controls, .explore { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { font-family: var(--display); font-weight: 600; font-size: 16px; border: 0; border-radius: 10px; padding: 8px 16px 6px; cursor: pointer; color: var(--ink); background: var(--text); }
+  button.go { background: var(--gold); }
+  button.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--line); }
+  button[aria-pressed="true"].ghost { background: var(--panel-2); box-shadow: inset 0 0 0 1.5px var(--gold); color: var(--gold); }
+  button.torch { background: #ff7a45; }
+  button.torch[aria-pressed="true"] { background: #ffd43b; box-shadow: 0 0 18px #ff7a45; }
+  button.water { background: #3aa0ff; }
+  button.water[aria-pressed="true"] { background: #9fd3ff; }
+  button.burn { background: #7ee081; }
+  button:disabled { opacity: .3; cursor: not-allowed; box-shadow: none; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .slider { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; flex: 1 1 200px; min-width: 0; }
+  .slider label { font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+  .slider output { font-family: var(--mono); font-size: 13px; color: var(--muted); min-width: 4ch; text-align: right; }
+  input[type=range] { width: 100%; accent-color: var(--gold); }
+  .explore .lbl { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); }
+  .cards { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }
+  @media (max-width: 820px) { .cards { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+  .card h2 { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin: 0; font-weight: 600; }
+  #phaseTitle { font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1.1; }
+  #phaseText { font-size: 14.5px; }
+  .eq { font-family: var(--mono); font-size: 13px; color: var(--gold); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: right; padding: 4px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 700; font-size: 12px; }
+  td { font-family: var(--mono); }
+  td.name { font-family: var(--body); font-weight: 700; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid #888; margin-right: 6px; vertical-align: -1px; }
+  .done { color: #7ee081; }
+  .keys { font-size: 12.5px; color: var(--muted); }
+  .flashy { animation: pop .5s ease-out; }
+  @keyframes pop { from { transform: scale(1.05); } to { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .flashy { animation: none; } }
+  /* touch-friendly */
+  html { -webkit-text-size-adjust: 100%; }
+  body { -webkit-tap-highlight-color: transparent; }
+  button, canvas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+  canvas { touch-action: none; }
+  @media (hover: none) { kbd { display: none; } }
+</style>
+<a href="index.html" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
+
+
+<div class="wrap">
+  <header>
+    <h1>Sugar <span>Factory</span></h1>
+    <div class="tag">Snap 24 atoms together into glucose. Then dissolve it, burn it to caramel, or burn it for energy like your body does.</div>
+  </header>
+
+  <div class="stage">
+    <canvas id="c" aria-label="Animation for building a glucose sugar molecule atom by atom"></canvas>
+    <div class="hint" id="hint">Drag atoms from the bins onto the glowing spots, or press Start</div>
+  </div>
+
+  <div class="controls">
+    <div class="btns">
+      <button class="go" id="autoBtn" aria-pressed="false">Start</button>
+      <button class="ghost" id="slowBtn" aria-pressed="false">Slow-mo</button>
+      <button class="ghost" id="resetBtn">Reset</button>
+    </div>
+    <div class="slider"><label for="speed">Build speed</label><input type="range" id="speed" min="0" max="100" value="45"><output id="speedOut">45</output></div>
+    <div class="slider"><label for="heat">Heat (jiggle)</label><input type="range" id="heat" min="0" max="100" value="20"><output id="heatOut">20</output></div>
+  </div>
+
+  <div class="explore">
+    <span class="lbl">When it's built</span>
+    <div class="btns">
+      <button class="water" id="waterBtn" aria-pressed="false" disabled>Drop in water</button>
+      <button class="torch" id="torchBtn" aria-pressed="false" disabled>Torch (hold)</button>
+      <button class="burn" id="burnBtn" disabled>Burn for energy</button>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card" id="phaseCard">
+      <h2>What's happening</h2>
+      <div id="phaseTitle">Build a sugar</div>
+      <div id="phaseText"></div>
+      <div class="eq" id="eq"></div>
+    </div>
+    <div class="card">
+      <h2>Parts count</h2>
+      <table>
+        <thead><tr><th>Piece</th><th>Placed</th><th>Needed</th></tr></thead>
+        <tbody>
+          <tr><td class="name"><span class="dot" style="background:#2b2b2b"></span>Carbon</td><td id="nC">0</td><td>6</td></tr>
+          <tr><td class="name"><span class="dot" style="background:#ef4b43"></span>Oxygen</td><td id="nO">0</td><td>6</td></tr>
+          <tr><td class="name"><span class="dot" style="background:#fff"></span>Hydrogen</td><td id="nH">0</td><td>12</td></tr>
+          <tr><td class="name">Bonds (shared pairs)</td><td id="nB">0</td><td>24</td></tr>
+        </tbody>
+      </table>
+      <div class="keys">Carbon gets 4 sticks, oxygen 2, hydrogen 1. Keys: <kbd>Space</kbd> start · <kbd>R</kbd> reset · <kbd>H</kbd> torch</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const EL = {
+    C: { fill: '#2b2b2b', stroke: '#000', r: 15, tc: '#fff', name: 'carbon' },
+    O: { fill: '#ef4b43', stroke: '#8e1b18', r: 14, tc: '#fff', name: 'oxygen' },
+    H: { fill: '#ffffff', stroke: '#666', r: 10.5, tc: '#222', name: 'hydrogen' }
+  };
+  const GOLD = '#f3b33d';
+
+  // ---------- glucose geometry (unit coords) ----------
+  const G = { atoms: [], bonds: [], groups: [], ringO: -1, ring: [], order: [] };
+  (function build() {
+    const add = (el, x, y, lab) => { G.atoms.push({ el, gx: x, gy: y, lab }); return G.atoms.length - 1; };
+    const bond = (a, b) => G.bonds.push([a, b]);
+    const out = (i, ang, d) => { const a = G.atoms[i], r = ang * Math.PI / 180; return [a.gx + d * Math.cos(r), a.gy + d * Math.sin(r)]; };
+    const R = 1.45, names = ['O', 'C1', 'C2', 'C3', 'C4', 'C5'], angs = [-60, 0, 60, 120, 180, 240];
+    names.forEach((n, i) => { const r = angs[i] * Math.PI / 180; G.ring.push(add(n === 'O' ? 'O' : 'C', R * Math.cos(r), R * Math.sin(r), n === 'O' ? null : n.slice(1))); });
+    G.ringO = G.ring[0];
+    for (let i = 0; i < 6; i++) bond(G.ring[i], G.ring[(i + 1) % 6]);
+    const ch = [];
+    const oh = (c, ang) => { const [x, y] = out(c, ang, 1.15); const o = add('O', x, y); bond(c, o); const [x2, y2] = out(o, ang, 0.85); const h = add('H', x2, y2); bond(o, h); return { o, h }; };
+    const hh = (c, ang, d = 0.9) => { const [x, y] = out(c, ang, d); const h = add('H', x, y); bond(c, h); return h; };
+    const sp = 32;
+    const g1 = oh(G.ring[1], sp), h1 = hh(G.ring[1], -sp);
+    const g2 = oh(G.ring[2], 60 + sp), h2 = hh(G.ring[2], 60 - sp);
+    const g3 = oh(G.ring[3], 120 - sp), h3 = hh(G.ring[3], 120 + sp);
+    const g4 = oh(G.ring[4], 180 + sp), h4 = hh(G.ring[4], 180 - sp);
+    const [x6, y6] = out(G.ring[5], 220, 1.3); const c6 = add('C', x6, y6, '6'); bond(G.ring[5], c6);
+    const h5 = hh(G.ring[5], 278);
+    const g6 = oh(c6, 200); const h6a = hh(c6, 255), h6b = hh(c6, 150);
+    // water-shaped groups for charring (O + 2 H each)
+    G.groups = [[g1.o, g1.h, h1], [g2.o, g2.h, h2], [g3.o, g3.h, h3], [g4.o, g4.h, h4], [g6.o, g6.h, h6a], [G.ringO, h5, h6b]];
+    G.hydroxyl = [g1, g2, g3, g4, g6];
+    // build order: ring carbons, ring O, C6, hydroxyl O, all H
+    G.order = [G.ring[1], G.ring[2], G.ring[3], G.ring[4], G.ring[5], G.ringO, c6, g1.o, g2.o, g3.o, g4.o, g6.o];
+    G.atoms.forEach((a, i) => { if (a.el === 'H') G.order.push(i); });
+  })();
+
+  let W = 900, H = 480, s = 1, dpr = 1;
+  const S = {};
+
+  const TEXT = {
+    build0: ['Build a sugar', 'Drag atoms from the bins onto the glowing spots, or press Start to watch it build itself. Each spot shows which atom belongs there.'],
+    building: ['Snapping it together', 'Every stick is a shared pair of electrons, just like in water. Carbon wants 4 sticks, oxygen wants 2, hydrogen wants 1. Little grey stubs show holes that still need a partner.'],
+    ring: ['Ring closed!', '5 carbons and 1 oxygen just made a hexagon. Most of the sugar in your food is shaped like a ring like this one.'],
+    built: ['Glucose! C₆H₁₂O₆', '24 atoms held together by 24 shared pairs. Every carbon has 4 sticks, every oxygen 2, every hydrogen 1. Now try the buttons: drop it in water, heat it with the torch, or burn it for energy.'],
+    water: ['Dissolving', 'Water molecules grab onto the O–H handles, because the slightly + and − ends pull on each other. They surround the sugar and carry it off. That is why sugar disappears in tea. The sugar itself does not break.'],
+    caramel: ['Caramel! (about 160°C)', 'The sugar melts and turns golden brown. That toasty smell is sugar molecules starting to come apart. Keep heating...'],
+    charring: ['Too hot! Water escapes', 'The heat pulls off H and O in the shape of water. Each H₂O puffs away as steam, one at a time.'],
+    charred: ['Burnt sugar = carbon', 'All 6 waters escaped and only the 6 carbons are left. That black crust on a burnt marshmallow is carbon! Press Reset to build another sugar.'],
+    burning: ['Burning for energy', 'Oxygen you breathe in (6 O₂) meets the sugar. Every bond is taken apart and the atoms find new partners...'],
+    burned: ['Energy released!', 'Same atoms, new partners: 6 CO₂ and 6 H₂O, plus a burst of energy. Your cells do this all day to power your muscles and brain, and that is why you breathe out CO₂. Plants run it backward with sunlight to make sugar.'],
+    wrong: ['Not that one', '']
+  };
+  const EQ = {
+    built: 'glucose = C₆H₁₂O₆ · weight 180',
+    charred: 'C₆H₁₂O₆ + heat → 6 C + 6 H₂O',
+    burned: 'C₆H₁₂O₆ + 6 O₂ → 6 CO₂ + 6 H₂O + energy',
+    burning: 'C₆H₁₂O₆ + 6 O₂ → ?'
+  };
+
+  function setText(key, override) {
+    const [t, b] = TEXT[key];
+    $('phaseTitle').textContent = t; $('phaseText').textContent = override || b;
+    $('eq').textContent = EQ[key] || '';
+    const c = $('phaseCard'); c.classList.remove('flashy'); void c.offsetWidth; c.classList.add('flashy');
+  }
+
+  function reset() {
+    Object.assign(S, {
+      mode: 'build', t: 0, auto: false, autoT: 0, flying: null,
+      atoms: G.atoms.map(a => ({ el: a.el, placed: false, free: false, x: 0, y: 0, sx: 0, sy: 0, tx: 0, ty: 0, tw: 1, alpha: 1, gone: false })),
+      bondOn: G.bonds.map(() => true), prodBonds: [],
+      drag: null, particles: [], rings: [], waters: [], msgT: 0, ringShown: false,
+      energy: 0, torch: false, charI: 0, charT: 0, burnT: 0, expand: 0
+    });
+    syncAuto(); setTorch(false);
+    $('waterBtn').setAttribute('aria-pressed', 'false');
+    $('hint').hidden = false;
+    setText('build0'); counts(); buttons();
+  }
+
+  function resize() {
+    const r = cv.getBoundingClientRect();
+    W = Math.max(300, r.width);
+    H = Math.round(Math.min(540, Math.max(380, W * 0.58)));
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    s = Math.max(0.62, Math.min(1.45, Math.min(W / 900, H / 480)));
+  }
+
+  // layout helpers
+  const unit = () => Math.min(46 * s, H / 8.4);
+  const center = () => ({ x: W * 0.56, y: H * 0.5 });
+  const ghostPx = i => { const c = center(), u = unit(), a = G.atoms[i]; return { x: c.x + a.gx * u, y: c.y + (a.gy + 0.35) * u }; };
+  const bins = () => { const x = 46 * s, ys = [0.28, 0.5, 0.72].map(f => H * f); return [{ el: 'C', x, y: ys[0] }, { el: 'O', x, y: ys[1] }, { el: 'H', x, y: ys[2] }]; };
+  const heat = () => +$('heat').value / 100;
+  const jig = (seed, amp = 1) => { const a = (heat() + S.energy * 1.5) * 5 * s * amp, t = S.t; return { x: a * (Math.sin(t * 7 + seed) + 0.5 * Math.sin(t * 12.3 + seed * 2)), y: a * (Math.cos(t * 6.1 + seed * 1.3) + 0.5 * Math.sin(t * 10.1 + seed)) }; };
+  const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+  function pos(i) {
+    const a = S.atoms[i];
+    if (a.free) {
+      const e = ease(Math.min(1, a.tw));
+      const j = jig(i * 1.7, 0.6);
+      return { x: a.sx + (a.tx - a.sx) * e + j.x, y: a.sy + (a.ty - a.sy) * e + j.y };
+    }
+    const g = ghostPx(i), j = jig(i * 1.7);
+    if (S.flying && S.flying.i === i) {
+      const e = ease(Math.min(1, S.flying.t));
+      return { x: S.flying.sx + (g.x - S.flying.sx) * e, y: S.flying.sy + (g.y - S.flying.sy) * e - Math.sin(e * Math.PI) * 40 * s };
+    }
+    return { x: g.x + j.x, y: g.y + j.y };
+  }
+
+  function counts() {
+    let c = 0, o = 0, h = 0, b = 0;
+    S.atoms.forEach((a, i) => { if (i < G.atoms.length && a.placed && !a.gone) { if (a.el === 'C') c++; else if (a.el === 'O') o++; else h++; } });
+    G.bonds.forEach(([x, y], k) => { if (S.bondOn[k] && S.atoms[x].placed && S.atoms[y].placed && !S.atoms[x].gone && !S.atoms[y].gone) b++; });
+    const set = (id, v, need) => { const el = $(id); el.textContent = v; el.className = v === need ? 'done' : ''; };
+    set('nC', c, 6); set('nO', o, 6); set('nH', h, 12); set('nB', b, 24);
+    return { c, o, h, b };
+  }
+
+  function buttons() {
+    const m = S.mode;
+    $('waterBtn').disabled = !(m === 'built' || m === 'water');
+    $('torchBtn').disabled = !(m === 'built' || m === 'caramel');
+    $('burnBtn').disabled = !(m === 'built' || m === 'water');
+  }
+
+  function place(i) {
+    S.atoms[i].placed = true;
+    const p = ghostPx(i);
+    S.rings.push({ x: p.x, y: p.y, r: 6 * s, a: 0.8, c: GOLD });
+    const n = counts();
+    const ringDone = G.ring.every(k => S.atoms[k].placed);
+    if (ringDone && !S.ringShown) { S.ringShown = true; setText('ring'); S.msgT = 3; }
+    else if (S.msgT <= 0 && $('phaseTitle').textContent !== TEXT.building[0] && n.b < 24) setText('building');
+    if (S.atoms.slice(0, G.atoms.length).every(a => a.placed)) {
+      S.mode = 'built'; S.auto = false; syncAuto(); setText('built'); buttons();
+      const c = center(); burst(c.x, c.y, 30, GOLD);
+    }
+  }
+
+  function burst(x, y, n, col) {
+    n = reduceMotion ? Math.ceil(n / 3) : n;
+    for (let k = 0; k < n; k++) { const a = Math.random() * Math.PI * 2, v = (90 + Math.random() * 220) * s; S.particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.6 + Math.random() * 0.6, c: Math.random() < 0.6 ? col : '#fff' }); }
+    S.rings.push({ x, y, r: 12 * s, a: 1, c: col });
+  }
+
+  // ---------- modes: water ----------
+  function spawnWaters() {
+    S.waters = [];
+    const n = 18;
+    for (let k = 0; k < n; k++) {
+      const edge = Math.random() * Math.PI * 2;
+      S.waters.push({ x: W / 2 + Math.cos(edge) * W * 0.6, y: H / 2 + Math.sin(edge) * H * 0.6, ang: Math.random() * 6, target: k < G.hydroxyl.length * 2 ? k : -1, seed: Math.random() * 10, leave: false, alpha: 1 });
+    }
+  }
+
+  // ---------- modes: char ----------
+  function freeAll() {
+    S.atoms.forEach((a, i) => { if (a.gone) return; const p = pos(i); a.free = true; a.sx = a.tx = p.x; a.sy = a.ty = p.y; a.tw = 1; });
+  }
+
+  function charStep() {
+    const gi = S.charI;
+    if (gi >= G.groups.length) return false;
+    const [o, h1, h2] = G.groups[gi];
+    G.bonds.forEach(([x, y], k) => { if ([o, h1, h2].includes(x) || [o, h1, h2].includes(y)) S.bondOn[k] = false; });
+    const po = pos(o);
+    const tx = po.x, ty = po.y - 40 * s;
+    const set = (i, x, y) => { const a = S.atoms[i], p = pos(i); a.sx = p.x; a.sy = p.y; a.tx = x; a.ty = y; a.tw = 0; a.steam = true; };
+    const u = unit() * 0.62;
+    set(o, tx, ty); set(h1, tx - u * 0.79, ty + u * 0.61); set(h2, tx + u * 0.79, ty + u * 0.61);
+    S.prodBonds.push([o, h1, 1], [o, h2, 1]);
+    S.charI++;
+    counts();
+    return true;
+  }
+
+  // ---------- modes: burn ----------
+  function startBurn() {
+    S.mode = 'burning'; S.burnT = 0; setText('burning'); buttons();
+    S.waters.forEach(w => w.leave = true);
+    const c = center(), Rin = Math.min(W, H) * 0.44;
+    for (let k = 0; k < 6; k++) {
+      const a = k / 6 * Math.PI * 2 + 0.3, ex = c.x + Math.cos(a) * W * 0.7, ey = c.y + Math.sin(a) * H * 0.7;
+      const tx = c.x + Math.cos(a) * Rin, ty = c.y + Math.sin(a) * Rin * 0.8;
+      const px = -Math.sin(a) * 11 * s, py = Math.cos(a) * 11 * s;
+      const i1 = S.atoms.push({ el: 'O', placed: true, free: true, sx: ex - px, sy: ey - py, tx: tx - px, ty: ty - py, tw: 0, alpha: 1, o2: true }) - 1;
+      const i2 = S.atoms.push({ el: 'O', placed: true, free: true, sx: ex + px, sy: ey + py, tx: tx + px, ty: ty + py, tw: 0, alpha: 1, o2: true }) - 1;
+      S.prodBonds.push([i1, i2, 2]);
+    }
+  }
+
+  function rearrange() {
+    // all old bonds break, atoms go to 6 CO2 + 6 H2O
+    S.bondOn = S.bondOn.map(() => false);
+    S.prodBonds = [];
+    freeAll();
+    const c = center(), Rp = Math.min(W * 0.34, H * 0.31), u = unit() * 0.8;
+    const Cs = [], Os = [], Hs = [];
+    S.atoms.forEach((a, i) => { if (a.el === 'C') Cs.push(i); else if (a.el === 'O') Os.push(i); else Hs.push(i); });
+    const setT = (i, x, y) => { const a = S.atoms[i], p = pos(i); a.sx = p.x; a.sy = p.y; a.tx = x; a.ty = y; a.tw = 0; };
+    S.slots = [];
+    for (let k = 0; k < 12; k++) {
+      const ang = k / 12 * Math.PI * 2 - Math.PI / 2;
+      const x = c.x + Math.cos(ang) * Rp * 1.15, y = c.y + Math.sin(ang) * Rp;
+      const tx = -Math.sin(ang), ty = Math.cos(ang), ox = Math.cos(ang), oy = Math.sin(ang);
+      if (k % 2 === 0) {
+        const ci = Cs.shift(), oa = Os.shift(), ob = Os.shift();
+        setT(ci, x, y); setT(oa, x - tx * u, y - ty * u); setT(ob, x + tx * u, y + ty * u);
+        S.prodBonds.push([ci, oa, 2], [ci, ob, 2]);
+        S.slots.push({ kind: 'CO₂', x, y, ox, oy });
+      } else {
+        const oi = Os.shift(), ha = Hs.shift(), hb = Hs.shift();
+        const a1 = ang + 0.91, a2 = ang - 0.91;
+        setT(oi, x, y); setT(ha, x + Math.cos(a1) * u * 0.85, y + Math.sin(a1) * u * 0.85); setT(hb, x + Math.cos(a2) * u * 0.85, y + Math.sin(a2) * u * 0.85);
+        S.prodBonds.push([oi, ha, 1], [oi, hb, 1]);
+        S.slots.push({ kind: 'H₂O', x, y, ox, oy });
+      }
+    }
+  }
+
+  // ---------- update ----------
+  function update(dt) {
+    S.t += dt;
+    S.msgT = Math.max(0, S.msgT - dt);
+
+    // auto build
+    if (S.mode === 'build') {
+      if (S.flying) {
+        S.flying.t += dt / (0.55 - (+$('speed').value) * 0.0042);
+        if (S.flying.t >= 1) { const i = S.flying.i; S.flying = null; place(i); }
+      } else if (S.auto) {
+        S.autoT -= dt;
+        if (S.autoT <= 0) {
+          const next = G.order.find(i => !S.atoms[i].placed);
+          if (next !== undefined) {
+            const b = bins().find(b => b.el === G.atoms[next].el);
+            S.flying = { i: next, sx: b.x, sy: b.y, t: 0 };
+            S.autoT = 0.95 - (+$('speed').value / 100) * 0.85;
+          }
+        }
+      }
+    }
+
+    // torch
+    if (S.torch && (S.mode === 'built' || S.mode === 'caramel')) S.energy = Math.min(1.1, S.energy + dt * 0.3);
+    else if (S.mode !== 'charring') S.energy = Math.max(0, S.energy - dt * 0.15);
+    if (S.mode === 'built' && S.energy >= 0.5) { S.mode = 'caramel'; setText('caramel'); buttons(); }
+    if (S.mode === 'caramel' && S.energy < 0.3 && !S.torch) { S.mode = 'built'; setText('built'); buttons(); }
+    if (S.mode === 'caramel' && S.energy >= 1) {
+      S.mode = 'charring'; setText('charring'); setTorch(false); buttons(); freeAll(); S.charT = 0;
+    }
+    if (S.mode === 'charring') {
+      S.energy = Math.max(0.7, S.energy - dt * 0.05);
+      S.charT -= dt;
+      if (S.charT <= 0) { if (!charStep()) { S.mode = 'charred'; setText('charred'); buttons(); S.energy = 0.4; } S.charT = 0.75; }
+    }
+    // steam: waters that finished tweening float up and fade
+    S.atoms.forEach(a => {
+      if (a.free) a.tw = Math.min(1, a.tw + dt / 0.6);
+      if (a.steam && a.tw >= 1) { a.sy -= 45 * s * dt; a.ty -= 45 * s * dt; a.alpha = Math.max(0, a.alpha - dt * 0.45); if (a.alpha <= 0) a.gone = true; }
+    });
+
+    // burn timeline
+    if (S.mode === 'burning') {
+      S.burnT += dt;
+      if (S.burnT > 1.3 && !S.rearranged) { S.rearranged = true; rearrange(); const c = center(); S.rings.push({ x: c.x, y: c.y, r: 20 * s, a: 0.9, c: '#fff' }); }
+      if (S.burnT > 2.4 && !S.burst) { S.burst = true; const c = center(); burst(c.x, c.y, 60, '#ffd43b'); S.shake = 0.35; }
+      if (S.burnT > 2.8) { S.mode = 'burned'; setText('burned'); buttons(); }
+    }
+    if (S.mode === 'burned') S.expand = Math.min(1, S.expand + dt * 0.25);
+
+    // water sprites
+    S.waters.forEach((w, k) => {
+      let tx, ty, ta;
+      if (w.leave) { const a = Math.atan2(w.y - H / 2, w.x - W / 2); w.x += Math.cos(a) * 160 * s * dt; w.y += Math.sin(a) * 160 * s * dt; w.alpha -= dt * 0.8; return; }
+      if (w.target >= 0 && S.mode === 'water') {
+        const g = G.hydroxyl[w.target % G.hydroxyl.length];
+        const po = pos(g.o);
+        const ring = center();
+        const dx = po.x - ring.x, dy = po.y - ring.y, L = Math.hypot(dx, dy) || 1;
+        const side = w.target < G.hydroxyl.length ? 1 : -1;
+        const ang = Math.atan2(dy, dx) + side * 0.55;
+        tx = po.x + Math.cos(ang) * 40 * s; ty = po.y + Math.sin(ang) * 40 * s;
+        ta = Math.atan2(po.y - ty, po.x - tx);
+      } else {
+        tx = w.x + Math.sin(S.t * 0.7 + w.seed) * 30 * s; ty = w.y + Math.cos(S.t * 0.6 + w.seed) * 30 * s; ta = w.ang + 0.4 * dt;
+        if (w.x < 0 || w.x > W || w.y < 0 || w.y > H) { tx = W / 2 + (Math.random() - 0.5) * W * 0.8; ty = H / 2 + (Math.random() - 0.5) * H * 0.8; }
+      }
+      const k2 = Math.min(1, dt * 2.2);
+      w.x += (tx - w.x) * k2; w.y += (ty - w.y) * k2;
+      let da = ta - w.ang; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; w.ang += da * k2;
+    });
+    S.waters = S.waters.filter(w => w.alpha > 0);
+
+    for (const p of S.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96; p.life -= dt; }
+    S.particles = S.particles.filter(p => p.life > 0);
+    for (const r of S.rings) { r.r += 220 * s * dt; r.a -= dt * 1.2; }
+    S.rings = S.rings.filter(r => r.a > 0);
+    S.shake = Math.max(0, (S.shake || 0) - dt);
+  }
+
+  // ---------- draw ----------
+  function bg() {
+    const e = S.energy;
+    const g = ctx.createRadialGradient(W * 0.56, H * 0.5, 10, W * 0.56, H * 0.5, Math.max(W, H) * 0.75);
+    g.addColorStop(0, `rgb(${52 + e * 60},${38 + e * 10},${22})`); g.addColorStop(1, '#120d07');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(243,179,61,0.06)'; ctx.lineWidth = 1; const st = 30 * s; ctx.beginPath();
+    for (let x = 0; x < W; x += st) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for (let y = 0; y < H; y += st) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+    ctx.stroke();
+  }
+  function ball(x, y, el, alpha = 1, scale = 1) {
+    const d = EL[el], r = d.r * s * scale;
+    ctx.save(); ctx.globalAlpha = alpha;
+    ctx.fillStyle = d.fill; ctx.strokeStyle = d.stroke; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(x - r * 0.35, y - r * 0.35, r * 0.28, 0, Math.PI * 2); ctx.fill();
+    if (scale >= 0.9) { ctx.fillStyle = d.tc; ctx.font = `800 ${Math.round(12 * s * scale)}px "JetBrains Mono", monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(el, x, y + 0.5); }
+    ctx.restore();
+  }
+  function stick(a, b, order = 1, alpha = 1) {
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+    const offs = order === 2 ? [-3.2, 3.2] : [0];
+    ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = order === 2 ? '#d9b44a' : '#a39a8c'; ctx.lineWidth = (order === 2 ? 3 : 5) * s; ctx.lineCap = 'round';
+    for (const o of offs) { ctx.beginPath(); ctx.moveTo(a.x + nx * o * s, a.y + ny * o * s); ctx.lineTo(b.x + nx * o * s, b.y + ny * o * s); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  function drawBins() {
+    if (S.mode !== 'build') return;
+    for (const b of bins()) {
+      const w = 60 * s, h = 64 * s;
+      ctx.save(); ctx.fillStyle = 'rgba(51,38,26,0.9)'; ctx.strokeStyle = '#4a3822'; ctx.lineWidth = 1.5;
+      rr(b.x - w / 2, b.y - h / 2, w, h, 10 * s); ctx.fill(); ctx.stroke(); ctx.restore();
+      ball(b.x, b.y - 6 * s, b.el);
+      ctx.fillStyle = '#c9b597'; ctx.font = `700 ${Math.round(10.5 * s)}px "Nunito Sans", system-ui, sans-serif`; ctx.textAlign = 'center';
+      ctx.fillText(EL[b.el].name, b.x, b.y + 24 * s);
+    }
+  }
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+  function drawMolecule() {
+    const N = G.atoms.length;
+    const inBuild = S.mode === 'build';
+    // caramel glow
+    if (S.energy > 0.05 && S.mode !== 'burned' && S.mode !== 'burning') {
+      const c = center(), g = ctx.createRadialGradient(c.x, c.y, 10, c.x, c.y, unit() * 4);
+      g.addColorStop(0, `rgba(190,110,30,${Math.min(0.55, S.energy * 0.55)})`); g.addColorStop(1, 'rgba(190,110,30,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    // ring fill
+    if (G.ring.every(i => S.atoms[i].placed && !S.atoms[i].free && !S.atoms[i].gone)) {
+      ctx.save(); ctx.fillStyle = `rgba(243,179,61,${0.12 + S.energy * 0.1})`; ctx.beginPath();
+      G.ring.forEach((i, k) => { const p = pos(i); k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+    // bonds
+    G.bonds.forEach(([a, b], k) => {
+      if (!S.bondOn[k]) return;
+      const A = S.atoms[a], B = S.atoms[b];
+      if (A.gone || B.gone) return;
+      const pa = pos(a), pb = pos(b);
+      if (A.placed && B.placed && !(S.flying && (S.flying.i === a || S.flying.i === b))) stick(pa, pb);
+      else if (inBuild && (A.placed || B.placed)) {
+        const from = A.placed ? pa : pb, to = A.placed ? ghostPx(b) : ghostPx(a);
+        stick(from, { x: from.x + (to.x - from.x) * 0.38, y: from.y + (to.y - from.y) * 0.38 }, 1, 0.55);
+      }
+    });
+    S.prodBonds.forEach(([a, b, o]) => { const A = S.atoms[a], B = S.atoms[b]; if (A.gone || B.gone) return; stick(pos(a), pos(b), o, Math.min(A.alpha, B.alpha)); });
+    // ghosts
+    if (inBuild) {
+      const pulse = 0.5 + 0.5 * Math.sin(S.t * 4);
+      for (let i = 0; i < N; i++) {
+        if (S.atoms[i].placed || (S.flying && S.flying.i === i)) continue;
+        const g = ghostPx(i), d = EL[G.atoms[i].el];
+        ctx.save(); ctx.setLineDash([4, 4]); ctx.strokeStyle = d.el === 'C' ? '#aaa' : (G.atoms[i].el === 'O' ? '#ff8a80' : '#e8e0d0');
+        if (G.atoms[i].el === 'C') ctx.strokeStyle = '#bdbdbd';
+        ctx.globalAlpha = 0.45 + 0.4 * pulse; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(g.x, g.y, d.r * s, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha = 0.55; ctx.fillStyle = ctx.strokeStyle; ctx.font = `700 ${Math.round(11 * s)}px "JetBrains Mono", monospace`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(G.atoms[i].el, g.x, g.y + 0.5); ctx.restore();
+      }
+    }
+    // atoms
+    S.atoms.forEach((a, i) => {
+      if (a.gone) return;
+      if (!a.placed && !(S.flying && S.flying.i === i)) return;
+      const p = pos(i);
+      ball(p.x, p.y, a.el, a.alpha);
+    });
+    // carbon numbers
+    if (S.mode === 'build' || S.mode === 'built' || S.mode === 'water' || S.mode === 'caramel') {
+      G.atoms.forEach((ga, i) => {
+        if (!ga.lab || !S.atoms[i].placed) return;
+        const p = pos(i), c = center(); let dx = c.x - p.x, dy = c.y + 0.35 * unit() - p.y; const L = Math.hypot(dx, dy) || 1;
+        let x = p.x + dx / L * 26 * s, y = p.y + dy / L * 26 * s;
+        if (ga.lab === '6') { x = p.x + 22 * s; y = p.y - 20 * s; }
+        ctx.fillStyle = GOLD; ctx.font = `800 ${Math.round(12 * s)}px "JetBrains Mono", monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(ga.lab, x, y);
+      });
+    }
+    // dragged atom
+    if (S.drag) ball(S.drag.x, S.drag.y, S.drag.el, 0.95);
+  }
+
+  function drawWaters() {
+    for (const w of S.waters) {
+      const hx = 13 * s;
+      ctx.save(); ctx.globalAlpha = Math.max(0, w.alpha) * 0.95;
+      for (const off of [0.91, -0.91]) {
+        const x = w.x + Math.cos(w.ang + off) * hx, y = w.y + Math.sin(w.ang + off) * hx;
+        ctx.strokeStyle = '#8fb8d8'; ctx.lineWidth = 2.5 * s; ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(x, y); ctx.stroke();
+        ctx.fillStyle = '#e8f3ff'; ctx.beginPath(); ctx.arc(x, y, 4.5 * s, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = '#3aa0ff'; ctx.beginPath(); ctx.arc(w.x, w.y, 7 * s, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawTorch() {
+    if (!S.torch) return;
+    const c = center(), x = c.x, base = H - 4 * s, len = Math.max(40 * s, base - (c.y + unit() * 3.1));
+    ctx.save(); ctx.fillStyle = '#6b5a45'; rr(x - 9 * s, base - 16 * s, 18 * s, 22 * s, 3 * s); ctx.fill();
+    for (const [col, f, wd] of [['rgba(255,90,40,0.5)', 1, 18], ['rgba(255,170,60,0.72)', 0.72, 12], ['rgba(255,240,170,0.95)', 0.42, 6]]) {
+      const fl = 1 + 0.12 * Math.sin(S.t * 31 + f * 10), hgt = len * f * fl, w = wd * s * (1 + 0.15 * Math.sin(S.t * 23 + f));
+      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x - w, base - 16 * s);
+      ctx.quadraticCurveTo(x - w * 1.2, base - 16 * s - hgt * 0.5, x, base - 16 * s - hgt);
+      ctx.quadraticCurveTo(x + w * 1.2, base - 16 * s - hgt * 0.5, x + w, base - 16 * s); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawTemp() {
+    if (!(S.energy > 0.02 || S.torch) || S.mode === 'burning' || S.mode === 'burned') return;
+    const w = 230 * s, h = 10 * s, x = W - w - 22 * s, y = 14 * s;
+    ctx.save(); ctx.fillStyle = 'rgba(23,18,11,0.85)'; rr(x - 8 * s, y - 6 * s, w + 16 * s, 56 * s, 8 * s); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; rr(x, y + 18 * s, w, h, h / 2); ctx.fill();
+    const f = Math.min(1, S.energy / 1.1), g = ctx.createLinearGradient(x, 0, x + w, 0);
+    g.addColorStop(0, '#f3b33d'); g.addColorStop(0.5, '#b8661f'); g.addColorStop(1, '#3a2512');
+    ctx.fillStyle = g; rr(x, y + 18 * s, Math.max(h, w * f), h, h / 2); ctx.fill();
+    const mark = (v, l) => { const mx = x + w * v / 1.1; ctx.fillStyle = '#fbf3e6'; ctx.fillRect(mx - 1, y + 15 * s, 2, h + 6 * s); ctx.font = `700 ${Math.round(10.5 * s)}px "Nunito Sans", sans-serif`; ctx.textAlign = 'center'; ctx.fillText(l, mx, y + 43 * s); };
+    mark(0.5, 'caramel'); mark(1, 'burns black');
+    ctx.fillStyle = '#fbf3e6'; ctx.font = `700 ${Math.round(11.5 * s)}px "Nunito Sans", sans-serif`; ctx.textAlign = 'left'; ctx.fillText('Temperature', x, y + 10 * s);
+    ctx.textAlign = 'right'; ctx.fillStyle = GOLD; ctx.font = `700 ${Math.round(12 * s)}px "JetBrains Mono", monospace`;
+    ctx.fillText(`~${Math.round((20 + S.energy * 250) / 5) * 5}°C`, x + w, y + 10 * s);
+    ctx.restore();
+  }
+
+  function drawLabels() {
+    const c = center();
+    ctx.textAlign = 'center';
+    if (S.mode === 'built' || S.mode === 'water' || S.mode === 'caramel') {
+      ctx.fillStyle = GOLD; ctx.font = `800 ${Math.round(26 * s)}px "Baloo 2", system-ui, sans-serif`;
+      ctx.fillText('C₆H₁₂O₆', c.x + unit() * 3.9, c.y - unit() * 2.4);
+      ctx.fillStyle = '#c9b597'; ctx.font = `700 ${Math.round(12 * s)}px "Nunito Sans", sans-serif`;
+      ctx.fillText('glucose', c.x + unit() * 3.9, c.y - unit() * 2.4 + 18 * s);
+    }
+    if (S.mode === 'charred') {
+      ctx.fillStyle = '#e8e0d0'; ctx.font = `800 ${Math.round(24 * s)}px "Baloo 2", system-ui, sans-serif`;
+      ctx.fillText('6 carbon atoms left: burnt sugar!', c.x, H - 34 * s);
+    }
+    if ((S.mode === 'burned' || (S.mode === 'burning' && S.rearranged)) && S.slots) {
+      ctx.font = `800 ${Math.round(12 * s)}px "JetBrains Mono", monospace`;
+      S.slots.forEach(sl => { ctx.fillStyle = sl.kind === 'CO₂' ? '#e8e0d0' : '#9fd3ff'; ctx.fillText(sl.kind, sl.x + sl.ox * 36 * s, sl.y + sl.oy * 36 * s + 4 * s); });
+      if (S.mode === 'burned') { ctx.fillStyle = '#ffd43b'; ctx.font = `800 ${Math.round(26 * s)}px "Baloo 2", system-ui, sans-serif`; ctx.fillText('ENERGY!', c.x, c.y + 8 * s); }
+    }
+  }
+
+  function draw() {
+    ctx.save();
+    if (S.shake > 0) ctx.translate((Math.random() - 0.5) * 8 * S.shake * s, (Math.random() - 0.5) * 8 * S.shake * s);
+    bg(); drawBins(); drawTorch(); drawWaters(); drawMolecule(); drawLabels();
+    for (const r of S.rings) { ctx.save(); ctx.globalAlpha = Math.max(0, r.a); ctx.strokeStyle = r.c; ctx.lineWidth = 2.5 * s; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+    for (const p of S.particles) { ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 1.4)); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, 2.8 * s, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    drawTemp();
+    ctx.restore();
+  }
+
+  // burned: gently expand products outward
+  function applyExpand() {
+    if (S.mode !== 'burned') return;
+    const c = center(), k = 1 + 0.0009 * 1;
+    S.atoms.forEach(a => { if (!a.free || a.gone) return; a.tx = c.x + (a.tx - c.x) * (1 + 0.0003); a.ty = c.y + (a.ty - c.y) * (1 + 0.0003); a.sx = a.tx; a.sy = a.ty; });
+    if (S.slots) S.slots.forEach(sl => { sl.x = c.x + (sl.x - c.x) * (1 + 0.0003); sl.y = c.y + (sl.y - c.y) * (1 + 0.0003); });
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    let dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if ($('slowBtn').getAttribute('aria-pressed') === 'true') dt *= 0.3;
+    update(dt); if (S.expand < 1) applyExpand(); draw();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- input ----------
+  function syncAuto() { $('autoBtn').textContent = S.auto ? 'Stop' : 'Start'; $('autoBtn').setAttribute('aria-pressed', String(!!S.auto)); }
+  function setTorch(on) { S.torch = on && !$('torchBtn').disabled; $('torchBtn').setAttribute('aria-pressed', String(S.torch)); }
+
+  $('autoBtn').addEventListener('click', () => {
+    if (S.mode !== 'build') reset();
+    S.auto = !S.auto; S.autoT = 0; syncAuto(); if (S.auto) $('hint').hidden = true;
+  });
+  $('slowBtn').addEventListener('click', e => { const b = e.currentTarget; b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); });
+  $('resetBtn').addEventListener('click', reset);
+  for (const id of ['speed', 'heat']) { const i = $(id), o = $(id + 'Out'); i.addEventListener('input', () => { o.textContent = i.value; }); }
+  $('waterBtn').addEventListener('click', e => {
+    const b = e.currentTarget, on = b.getAttribute('aria-pressed') !== 'true';
+    b.setAttribute('aria-pressed', String(on));
+    if (on) { S.mode = 'water'; spawnWaters(); setText('water'); }
+    else { S.mode = 'built'; S.waters.forEach(w => w.leave = true); setText('built'); }
+    buttons();
+  });
+  const tb = $('torchBtn');
+  tb.addEventListener('pointerdown', e => { setTorch(true); tb.setPointerCapture(e.pointerId); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) tb.addEventListener(ev, () => setTorch(false));
+  tb.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setTorch(true); } });
+  tb.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') setTorch(false); });
+  $('burnBtn').addEventListener('click', () => { if (S.mode === 'built' || S.mode === 'water') { $('waterBtn').setAttribute('aria-pressed', 'false'); S.rearranged = false; S.burst = false; startBurn(); } });
+
+  function ptr(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  cv.addEventListener('pointerdown', e => {
+    if (S.mode !== 'build') return;
+    const p = ptr(e);
+    for (const b of bins()) {
+      if (Math.abs(p.x - b.x) < 32 * s && Math.abs(p.y - b.y) < 34 * s) {
+        S.drag = { el: b.el, x: p.x, y: p.y }; cv.setPointerCapture(e.pointerId); $('hint').hidden = true; return;
+      }
+    }
+  });
+  cv.addEventListener('pointermove', e => { if (!S.drag) return; const p = ptr(e); S.drag.x = p.x; S.drag.y = p.y; });
+  cv.addEventListener('pointerup', () => {
+    if (!S.drag) return;
+    const d = S.drag; S.drag = null;
+    let best = -1, bd = 1e9;
+    G.atoms.forEach((ga, i) => { if (S.atoms[i].placed || (S.flying && S.flying.i === i)) return; const g = ghostPx(i), dd = Math.hypot(g.x - d.x, g.y - d.y); if (dd < bd) { bd = dd; best = i; } });
+    if (best < 0 || bd > 30 * s) return;
+    // prefer a matching spot within reach
+    let match = -1, md = 1e9;
+    G.atoms.forEach((ga, i) => { if (ga.el !== d.el || S.atoms[i].placed) return; const g = ghostPx(i), dd = Math.hypot(g.x - d.x, g.y - d.y); if (dd < md) { md = dd; match = i; } });
+    if (match >= 0 && md <= 30 * s) { place(match); return; }
+    const want = EL[G.atoms[best].el].name;
+    setText('wrong', `That spot needs ${want === 'oxygen' ? 'an' : 'a'} ${want}. Look at the letter inside the glowing circle.`); S.msgT = 2.5;
+    S.rings.push({ x: d.x, y: d.y, r: 6 * s, a: 0.8, c: '#ff6b6b' });
+  });
+  cv.addEventListener('pointercancel', () => { S.drag = null; });
+
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return;
+    if (e.key === ' ') { e.preventDefault(); $('autoBtn').click(); }
+    else if (e.key === 'r' || e.key === 'R') reset();
+    else if (e.key === 'h' || e.key === 'H') setTorch(true);
+  });
+  window.addEventListener('keyup', e => { if (e.key === 'h' || e.key === 'H') setTorch(false); });
+  document.querySelectorAll('button, canvas').forEach(el => el.addEventListener('contextmenu', e => e.preventDefault()));
+  window.addEventListener('resize', resize);
+
+  resize(); reset();
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

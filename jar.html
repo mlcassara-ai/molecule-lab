@@ -54,6 +54,7 @@
   .over .rows em { font-style: normal; color: var(--gold); }
   .btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
   button { font-family: var(--display); font-weight: 600; font-size: 16px; border: 0; border-radius: 10px; padding: 8px 16px 6px; cursor: pointer; color: var(--ink); background: var(--gold); -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  button:disabled { opacity: .4; cursor: default; }
   button.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--line); }
   button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   .side { display: grid; gap: 12px; }
@@ -103,6 +104,7 @@
       <div class="btns">
         <button class="ghost" id="newBtn">New game</button>
         <button class="ghost" id="pauseBtn">Pause</button>
+        <button id="shakeBtn">🔥 Shake (3)</button>
         <button class="ghost" id="hintBtn">Hints: on</button>
       </div>
     </div>
@@ -120,7 +122,8 @@
         <div class="howto">
           <div><em>Atoms</em><span>H has 1 hand, O has 2, N has 3, C has 4. Fill every hand to finish a molecule.</span></div>
           <div><em>Score</em><span>Every bond is a pair of shared electrons (+2). Double bonds share 4, triple bonds 6. Finishing a molecule earns a bonus: bigger molecules, bigger bonus.</span></div>
-          <div><em>Glow</em><span>Atoms glowing the same color are already holding hands: a molecule in progress.</span></div>
+          <div><em>Shake</em><span>Heat the jar: half-built pieces shake apart and their atoms find new partners. Finished molecules stay together. 3 shakes, and you earn another every 40 drops.</span></div>
+          <div><em>Glow</em><span>Atoms glowing the same color are already holding hands: a molecule in progress. Bright green sticks = where the atom you're holding can attach.</span></div>
           <div><em>Gases</em><span>H₂, O₂ and N₂ drift up and out of the open jar, making room.</span></div>
           <div><em>Clumps</em><span>Water sticks to water (and CO₂ to CO₂, methane to methane, ammonia to ammonia), growing a bigger clump each time, up to 16. They stay separate molecules, just holding on.</span></div>
           <div><em>Chains</em><span>Two of the same molecule touching link into a longer chain.</span></div>
@@ -263,13 +266,13 @@
       Bodies.rectangle(W + 30 - WALL, H / 2, 60, H * 2, opts)
     ]);
     S = { score: 0, aim: W / 2, cur: pick(0), next: pick(1), drops: 0, cool: 0, bonds: [], clusters: new Map(), nextCl: 1,
-          queue: [], particles: [], rings: [], floats: [], banner: null, stats: { mols: 0, heavy: null, big: null, diamond: false, e: 0, bonus: 0 }, bq: [], hintT: 0, hintIx: 0, hintSoon: -1, overT: 0, over: false, paused: false, t: 0, lastDrop: null, log: [] };
+          queue: [], particles: [], rings: [], floats: [], banner: null, stats: { mols: 0, heavy: null, big: null, diamond: false, e: 0, bonus: 0 }, bq: [], shakes: 3, shakeT: 0, hintT: 0, hintIx: 0, hintSoon: -1, overT: 0, over: false, paused: false, t: 0, lastDrop: null, log: [] };
     Events.on(engine, 'collisionStart', onCollide);
     Events.on(engine, 'collisionActive', onCollide);
     $('over').hidden = true; $('pauseBtn').textContent = 'Pause';
     event('Tap the jar to drop an atom', 'Atoms have "hands" (the little sticks). When two atoms touch and both have a free hand, they share a pair of electrons and stick, but only if they are on their way to a real molecule.', '');
     $('log').innerHTML = '';
-    hud(); drawNext();
+    hud(); drawNext(); shakeBtn();
   }
 
   function pick(n) {
@@ -281,6 +284,17 @@
       const pool = ['fire', 'fire', 'bolt', 'sun', 'sun'];
       if (hasChar) pool.push('press', 'press', 'press');
       return { kind: 'power', key: pool[Math.floor(Math.random() * pool.length)] };
+    }
+    // about 40% of the time, hand the player an atom that some half-built molecule in the jar can use
+    if (S && Math.random() < 0.4) {
+      const want = {};
+      S.clusters.forEach(mem => {
+        if (mem.length < 2 || !mem.some(b => b.plugin.used < ATOMS[b.plugin.key].hands)) return;
+        const f = formula(mem[0].plugin.cl);
+        ['H', 'O', 'C', 'N'].forEach(e => { if (fitsSome(addF(f, { [e]: 1 }))) want[e] = (want[e] || 0) + 1; });
+      });
+      const keys = Object.keys(want);
+      if (keys.length) { let tot = keys.reduce((t, k) => t + want[k], 0), r2 = Math.random() * tot; for (const k of keys) { r2 -= want[k]; if (r2 <= 0) return { kind: 'atom', key: k }; } }
     }
     const a = Math.random();
     return { kind: 'atom', key: a < 0.46 ? 'H' : a < 0.7 ? 'O' : a < 0.9 ? 'C' : 'N' };
@@ -315,13 +329,84 @@
       if (A.cl === B.cl) continue;
       const dx = b.position.x - a.position.x, dy = b.position.y - a.position.y, d = Math.hypot(dx, dy);
       const gap = d - ATOMS[A.key].r - ATOMS[B.key].r;
-      if (gap > 26 || d < 1) continue;
+      if (gap > (S.shakeT > 0 ? 95 : 26) || d < 1) continue;
       if (!fitsSome(addF(formula(A.cl), formula(B.cl)))) continue;
-      const f = 0.00035 / d;
+      const f = (S.shakeT > 0 ? 0.0022 : 0.00035) / d;
       Body.applyForce(a, a.position, { x: dx * f * a.mass, y: dy * f * a.mass });
       Body.applyForce(b, b.position, { x: -dx * f * b.mass, y: -dy * f * b.mass });
     }
+    // while shaking, matching molecules find each other too (water finds water, sugar finds sugar)
+    if (S.shakeT > 0) {
+      const mols = Composite.allBodies(engine.world).filter(b => b.plugin && b.plugin.kind === 'mol' && !b.plugin.dead && !b.plugin.rising && (MERGE[b.plugin.key] || STACK[b.plugin.key]));
+      for (let i = 0; i < mols.length; i++) for (let j = i + 1; j < mols.length; j++) {
+        const a = mols[i], b = mols[j];
+        if (a.plugin.key !== b.plugin.key || (STACK[a.plugin.key] && a.plugin.n + b.plugin.n > MAXN)) continue;
+        const dx = b.position.x - a.position.x, dy = b.position.y - a.position.y, d = Math.hypot(dx, dy);
+        if (d > 170 || d < 1) continue;
+        const f = 0.0025 / d;
+        Body.applyForce(a, a.position, { x: dx * f * a.mass, y: dy * f * a.mass });
+        Body.applyForce(b, b.position, { x: -dx * f * b.mass, y: -dy * f * b.mass });
+      }
+    }
   }
+
+  // an atom that bumps a full hand slides around the molecule to an open hand
+  const freeHands = b => ATOMS[b.plugin.key].hands - b.plugin.used;
+  function trySeek(a, b) {
+    for (const [mover, hit] of [[a, b], [b, a]]) {
+      const M = mover.plugin, Hc = hit.plugin;
+      if (freeHands(mover) <= 0 || freeHands(hit) > 0) continue;
+      if ((S.clusters.get(M.cl) || []).length > 2) continue;           // only small pieces slide
+      if (M.seek && S.t < M.seek.until) return true;
+      const targets = (S.clusters.get(Hc.cl) || []).filter(t => freeHands(t) > 0);
+      if (!targets.length) continue;
+      if (!fitsSome(addF(formula(M.cl), formula(Hc.cl)))) continue;
+      const t = targets.sort((p, q) => dist(p, mover) - dist(q, mover))[0];
+      M.seek = { target: t, until: S.t + 2.2 };
+      if (!S.seekMsgT || S.t - S.seekMsgT > 6) {
+        S.seekMsgT = S.t;
+        event('Sliding to an open hand', 'That spot was full (no free hand there), so the atom keeps bumping around until it finds a hand that is free. Real atoms bump billions of times a second, so they find the open spot almost instantly.', '');
+        S.floats.push({ x: mover.position.x, y: mover.position.y - 30, t: 0, text: 'full! sliding over…' });
+      }
+      return true;
+    }
+    return false;
+  }
+  function seekStep() {
+    Composite.allBodies(engine.world).forEach(b => {
+      const P = b.plugin; if (!P || !P.seek) return;
+      const T = P.seek.target;
+      if (S.t > P.seek.until || P.dead || !T || T.plugin.dead || freeHands(b) <= 0 || freeHands(T) <= 0 || T.plugin.cl === P.cl) { P.seek = null; return; }
+      const dx = T.position.x - b.position.x, dy = T.position.y - b.position.y, d = Math.hypot(dx, dy) || 1;
+      // pull toward the open hand, cancel most of gravity so it can roll around the molecule
+      Body.applyForce(b, b.position, { x: dx / d * b.mass * 0.0016, y: dy / d * b.mass * 0.0016 - b.mass * 0.0007 });
+      Body.setVelocity(b, { x: b.velocity.x * 0.96, y: b.velocity.y * 0.96 });
+    });
+  }
+
+  // ---- shake (heat): everything jiggles faster, so more bumps and more bonds
+  function shake() {
+    if (S.over || S.paused || S.shakes <= 0 || S.shakeT > 0) return;
+    S.shakes--; S.shakeT = 2.0; engine.gravity.y = 0.3; shakeBtn();
+    // half-built pieces are wobbly: heat shakes them apart so their atoms can try again. Finished molecules are strong and stay.
+    let broke = 0;
+    [...S.clusters.entries()].forEach(([cl, mem]) => {
+      if (mem.length < 2) return;
+      S.bonds = S.bonds.filter(bd => { if (bd.a.plugin.cl === cl) { Composite.remove(engine.world, bd.c); broke++; return false; } return true; });
+      S.clusters.delete(cl);
+      mem.forEach(m => { m.plugin.used = 0; m.plugin.cl = S.nextCl++; S.clusters.set(m.plugin.cl, [m]); m.plugin.seek = null; });
+    });
+    S.stats.shook = (S.stats.shook || 0) + broke;
+    Composite.allBodies(engine.world).forEach(b => { if (!b.isStatic && b.plugin && b.plugin.kind && !b.plugin.rising) Body.setVelocity(b, { x: b.velocity.x + (Math.random() - 0.5) * 6, y: b.velocity.y - 2 - Math.random() * 4 }); });
+    event('Heat! Everything jiggles', 'Heat makes everything move faster and bump more. Half-built pieces are wobbly, so the heat shakes them apart and their atoms get a fresh try at finding partners. Finished molecules are strong, so they stay together. That is why heating makes things react faster!', 'more heat → faster atoms → more bumps → more reactions');
+  }
+  function shakeStep(dt) {
+    if (S.shakeT <= 0) return;
+    S.shakeT -= dt;
+    if (S.shakeT <= 0) { engine.gravity.y = 1; return; }
+    if (Math.random() < 0.5) Composite.allBodies(engine.world).forEach(b => { if (!b.isStatic && b.plugin && b.plugin.kind && !b.plugin.rising && b.position.y > TOPLINE) Body.applyForce(b, b.position, { x: (Math.random() - 0.5) * b.mass * 0.004, y: -Math.random() * b.mass * 0.003 }); });
+  }
+  function shakeBtn() { const el = $('shakeBtn'); if (!el) return; el.textContent = `🔥 Shake (${S.shakes})`; el.disabled = S.shakes <= 0; }
 
   // ---------------- chemistry helpers ----------------
   function formula(cl) { const f = {}; for (const b of S.clusters.get(cl) || []) f[b.plugin.key] = (f[b.plugin.key] || 0) + 1; return f; }
@@ -348,7 +433,7 @@
       if (A.kind === 'power' || B.kind === 'power') { const pw = A.kind === 'power' ? a : b, other = pw === a ? b : a; S.queue.push(['power', pw, other]); continue; }
       if (A.kind === 'atom' && B.kind === 'atom') {
         if (A.cl === B.cl) continue;
-        if (A.used >= ATOMS[A.key].hands || B.used >= ATOMS[B.key].hands) { nope(a, b, null); continue; }
+        if (A.used >= ATOMS[A.key].hands || B.used >= ATOMS[B.key].hands) { if (!trySeek(a, b)) nope(a, b, null); continue; }
         const f = addF(formula(A.cl), formula(B.cl));
         if (!fitsSome(f)) { nope(a, b, f); continue; }
         S.queue.push(['bond', a, b]);
@@ -507,6 +592,8 @@
     return null;
   }
   const TIPS = [
+    'Stuck? Tap Shake. Heat makes atoms bump more, so they find partners faster.',
+    'Look for glowing green sticks: that is where your atom can attach!',
     'Carbon (black) has 4 hands. Give it 4 hydrogens to make methane.',
     'Oxygen (red) has 2 hands. One O + two H = water!',
     'Nitrogen (blue) has 3 hands. One N + three H = ammonia.',
@@ -520,7 +607,7 @@
   ];
   function pickHint() {
     const top = Composite.allBodies(engine.world).reduce((m, b) => b.plugin && b.plugin.kind && !b.plugin.rising && S.t - b.plugin.born > 1.5 ? Math.min(m, b.position.y - (b.circleRadius || 10)) : m, H);
-    if (top < TOPLINE + 120) return 'The jar is filling up! Make H₂, O₂ or N₂ gas. It floats away and makes room.';
+    if (top < TOPLINE + 120) return S.shakes > 0 && Math.random() < 0.5 ? 'The jar is filling up! Try a Shake to help loose atoms finish their molecules.' : 'The jar is filling up! Make H₂, O₂ or N₂ gas. It floats away and makes room.';
     const opts = [];
     if (countOf('C2H4') >= 2) opts.push('Get two green ethylenes to touch to start a wax chain!');
     if (countOf('WAX') >= 2) opts.push('Two waxes touching make plastic!');
@@ -649,7 +736,7 @@
       const A = ATOMS[it.key], r = A.r, free = extra ? A.hands - extra.used : A.hands;
       // hands
       if (free > 0) {
-        ctx.strokeStyle = 'rgba(200,200,200,0.9)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        const g = extra && extra.glow; ctx.strokeStyle = g ? `rgba(124,255,178,${0.6 + 0.4 * Math.sin(S.t * 6)})` : 'rgba(200,200,200,0.9)'; ctx.lineWidth = g ? 4.5 : 3; ctx.lineCap = 'round';
         const base = extra && extra.handAngles ? extra.handAngles : null;
         for (let i = 0; i < free; i++) {
           const a = (base ? base[i] : (i / A.hands) * Math.PI * 2 - Math.PI / 2) + ang;
@@ -745,6 +832,7 @@
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
+    ctx.save(); if (S.shakeT > 0) ctx.translate((Math.random() - 0.5) * 5, (Math.random() - 0.5) * 3);
     drawJar();
     // unfinished molecules glow in a shared color so you can see who is holding whom
     const HALO = ['#ffd43b', '#4fd8ff', '#ff7ab6', '#7ee081', '#c9a2ff', '#ff9f43'];
@@ -769,10 +857,13 @@
     ctx.save(); ctx.strokeStyle = '#d7dde8'; ctx.lineWidth = 6; ctx.lineCap = 'round';
     S.bonds.forEach(({ a, b }) => { ctx.beginPath(); ctx.moveTo(a.position.x, a.position.y); ctx.lineTo(b.position.x, b.position.y); ctx.stroke(); });
     ctx.restore();
+    const cur = !S.over && S.cur && S.cur.kind === 'atom' ? { [S.cur.key]: 1 } : null, fitMemo = new Map();
+    const canGrab = P => { if (!cur || P.used >= ATOMS[P.key].hands) return false; if (!fitMemo.has(P.cl)) fitMemo.set(P.cl, fitsSome(addF(formula(P.cl), cur))); return fitMemo.get(P.cl); };
     Composite.allBodies(engine.world).forEach(b => {
       if (!b.plugin || !b.plugin.kind) return;
       const P = b.plugin;
-      drawItem({ kind: P.kind, key: P.key, n: P.n }, b.position.x, b.position.y, P.kind === 'atom' ? (handAngles(b) ? 0 : b.angle) : b.angle, 1, P.kind === 'atom' ? { used: P.used, handAngles: handAngles(b) ? handAngles(b).map(a => a + 0) : null } : null);
+      if (P.seek && P.seek.target) { const T = P.seek.target; ctx.save(); ctx.strokeStyle = '#ffd43b'; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(S.t * 10); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(T.position.x, T.position.y, ATOMS[T.plugin.key].r + 12, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      drawItem({ kind: P.kind, key: P.key, n: P.n }, b.position.x, b.position.y, P.kind === 'atom' ? (handAngles(b) ? 0 : b.angle) : b.angle, 1, P.kind === 'atom' ? { used: P.used, handAngles: handAngles(b) ? handAngles(b).map(a => a + 0) : null, glow: canGrab(P) } : null);
       if (P.kind === 'atom' && (S.clusters.get(P.cl) || []).length > 1) { ctx.save(); ctx.strokeStyle = haloOf(P.cl); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(b.position.x, b.position.y, ATOMS[P.key].r + 1, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
     });
     // aim + current
@@ -791,11 +882,13 @@
     }
     for (const r of S.rings) { ctx.save(); ctx.globalAlpha = Math.max(0, r.a); ctx.strokeStyle = r.c; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
     for (const p of S.particles) { ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 1.5)); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
-    for (const f of S.floats) { ctx.save(); ctx.globalAlpha = Math.max(0, 1 - f.t / (f.big ? 2 : 1.3)); ctx.font = (f.big ? '800 16px' : '800 13px') + ' "Baloo 2", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,20,0.8)'; ctx.strokeText(f.text, Math.max(90, Math.min(W - 90, f.x)), f.y); ctx.fillStyle = f.big ? '#7ee081' : '#ffe36b'; ctx.fillText(f.text, Math.max(90, Math.min(W - 90, f.x)), f.y); ctx.restore(); }
+    for (const f of S.floats) { ctx.save(); ctx.globalAlpha = Math.max(0, 1 - f.t / (f.big ? 2 : 1.3)); ctx.font = (f.big ? '800 16px' : '800 13px') + ' "Baloo 2", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,20,0.8)'; ctx.strokeText(f.text, fx(f), f.y); ctx.fillStyle = f.big ? '#7ee081' : '#ffe36b'; ctx.fillText(f.text, fx(f), f.y); ctx.restore(); }
+    ctx.restore();
     drawBanner();
     if (S.paused && !S.over) { ctx.fillStyle = 'rgba(8,12,20,0.6)'; ctx.fillRect(0, 0, W, H); label(W / 2, H / 2, 'Paused', '#fff', 30); }
   }
 
+  function fx(f) { const hw = ctx.measureText(f.text).width / 2 + 6; return Math.max(WALL + hw, Math.min(W - WALL - hw, f.x)); }
   function drawBanner() {
     const B = S.banner; if (!B) return;
     const age = S.t - B.t0, LIFE = B.life; if (age > LIFE) return;
@@ -852,9 +945,9 @@
     const dt = Math.min(0.033, (now - last) / 1000); last = now;
     if (!S.paused && !S.over) {
       S.t += dt; S.cool = Math.max(0, S.cool - dt);
-      if ((S.tick = (S.tick || 0) + 1) % 3 === 0) reachStep();
+      if ((S.tick = (S.tick || 0) + 1) % 3 === 0 || S.shakeT > 0) reachStep();
       Engine.update(engine, dt * 1000);
-      process(); gasStep(); bannerStep();
+      process(); gasStep(); bannerStep(); seekStep(); shakeStep(dt);
       // game over check
       let danger = false;
       Composite.allBodies(engine.world).forEach(b => {
@@ -913,6 +1006,7 @@
     S.lastDrop = b; S.drops++;
     S.cur = S.next; S.next = pick(1); S.cool = 0.45;
     if (S.next.kind === 'power' || S.cur.kind === 'power') S.hintSoon = 0.4;
+    if (S.drops % 40 === 0 && S.shakes < 3) { S.shakes++; shakeBtn(); S.floats.push({ x: W / 2, y: TOPLINE + 30, t: 0, big: true, text: '+1 shake!' }); }
     S.aim = clampAim(S.aim);
     drawNext();
     if (S.drops === 1) event('Keep dropping!', 'Try to get 2 hydrogens touching one oxygen to make water. Careful: H + H makes hydrogen gas, and O + O makes oxygen gas right away.', '');
@@ -922,7 +1016,9 @@
     if (e.key === 'ArrowLeft') { S.aim = clampAim(S.aim - 16); e.preventDefault(); }
     else if (e.key === 'ArrowRight') { S.aim = clampAim(S.aim + 16); e.preventDefault(); }
     else if (e.key === ' ' || e.key === 'ArrowDown') { drop(); e.preventDefault(); }
+    else if (e.key === 's' || e.key === 'S') { shake(); }
   });
+  $('shakeBtn').addEventListener('click', shake);
   $('newBtn').addEventListener('click', () => { Engine.clear(engine); newGame(); });
   $('againBtn').addEventListener('click', () => { Engine.clear(engine); newGame(); });
   $('pauseBtn').addEventListener('click', () => { if (S.over) return; S.paused = !S.paused; $('pauseBtn').textContent = S.paused ? 'Resume' : 'Pause'; });

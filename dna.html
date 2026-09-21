@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Molecule Lab">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+</head>
+<body>
+<title>DNA Zipper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito+Sans:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root {
+    --ink: #110c1f; --panel: #1c1533; --panel-2: #2a2148; --line: #3b3063;
+    --text: #f3efff; --muted: #b8acdc; --pink: #ff6fb5; --gold: #ffd43b;
+    --A: #f28c28; --T: #b36bd6; --G: #3fb950; --C: #3aa0ff;
+    --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  html, body { background: var(--ink); color: var(--text); -webkit-text-size-adjust: 100%; }
+  body { font-family: var(--body); font-size: 15px; line-height: 1.45; -webkit-tap-highlight-color: transparent; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 32px; display: grid; gap: 14px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 5vw, 40px); line-height: 1; margin: 0; letter-spacing: -0.5px; }
+  h1 span { color: var(--pink); }
+  .tag { color: var(--muted); font-size: 14px; max-width: 50ch; text-wrap: balance; }
+  .stage { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #0b0816; }
+  canvas { display: block; width: 100%; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .bases { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .base { display: grid; justify-items: center; gap: 2px; padding: 10px 6px 8px; border-radius: 14px; border: 0; cursor: pointer; color: #140d22; font-family: var(--display); -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  .base b { font-size: 30px; line-height: 1; font-weight: 800; }
+  .base small { font-family: var(--body); font-size: 12px; font-weight: 700; opacity: .85; }
+  .base svg { width: 34px; height: 16px; }
+  .base[data-b="A"] { background: var(--A); } .base[data-b="T"] { background: var(--T); }
+  .base[data-b="G"] { background: var(--G); } .base[data-b="C"] { background: var(--C); }
+  .base:disabled { opacity: .3; cursor: not-allowed; }
+  .shake { animation: shake .35s; }
+  @keyframes shake { 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button.b { font-family: var(--display); font-weight: 600; font-size: 16px; border: 0; border-radius: 10px; padding: 8px 16px 6px; cursor: pointer; color: var(--ink); background: var(--text); -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  button.go { background: var(--pink); }
+  button.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--line); }
+  button.ghost[aria-pressed="true"] { background: var(--panel-2); box-shadow: inset 0 0 0 1.5px var(--pink); color: var(--pink); }
+  button:disabled { opacity: .3; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .slider { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; flex: 1 1 200px; min-width: 0; }
+  .slider label { font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+  input[type=range] { width: 100%; accent-color: var(--pink); }
+  .lbl { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); }
+  .cards { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }
+  @media (max-width: 820px) { .cards { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+  .card h2 { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin: 0; font-weight: 600; }
+  #phaseTitle { font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1.1; }
+  .row { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; border-bottom: 1px solid var(--line); padding: 4px 0; }
+  .row b { font-family: var(--mono); text-align: right; }
+  .flashy { animation: pop .5s ease-out; }
+  @keyframes pop { from { transform: scale(1.04); } to { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .flashy, .shake { animation: none; } }
+</style>
+<a href="index.html" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
+
+
+<div class="wrap">
+  <header>
+    <h1>DNA <span>Zipper</span></h1>
+    <div class="tag">Build the matching half of a DNA strand, twist it into a helix, then unzip it and watch it copy itself.</div>
+  </header>
+
+  <div class="stage"><canvas id="c" aria-label="DNA ladder with bases A, T, G and C"></canvas></div>
+
+  <div class="bases" id="bases">
+    <button class="base" data-b="A"><b>A</b><small>Adenine</small></button>
+    <button class="base" data-b="T"><b>T</b><small>Thymine</small></button>
+    <button class="base" data-b="G"><b>G</b><small>Guanine</small></button>
+    <button class="base" data-b="C"><b>C</b><small>Cytosine</small></button>
+  </div>
+
+  <div class="controls">
+    <div class="btns">
+      <button class="b go" id="autoBtn">Auto-build</button>
+      <button class="b ghost" id="twistBtn" aria-pressed="false" disabled>Twist it</button>
+      <button class="b ghost" id="unzipBtn" disabled>Unzip</button>
+      <button class="b ghost" id="copyBtn" disabled>Copy!</button>
+      <button class="b ghost" id="resetBtn">New DNA</button>
+    </div>
+    <div class="slider"><label for="speed">Speed</label><input type="range" id="speed" min="10" max="100" value="50"></div>
+  </div>
+
+  <div class="cards">
+    <div class="card" id="phaseCard">
+      <h2>What's happening</h2>
+      <div id="phaseTitle">Build the other half</div>
+      <div id="phaseText"></div>
+    </div>
+    <div class="card">
+      <h2>Counting</h2>
+      <div class="row"><span>Base pairs built</span><b id="nPairs">0 / 10</b></div>
+      <div class="row"><span>Hydrogen bonds holding the rungs</span><b id="nH">0</b></div>
+      <div class="row"><span>Letters in YOUR DNA</span><b>3 billion pairs</b></div>
+      <div class="row"><span>Reading 1 letter a second</span><b>~98 years</b></div>
+      <div class="row"><span>DNA in one cell, stretched out</span><b>~2 meters</b></div>
+      <div class="row"><span>Width of DNA</span><b>2 nm</b></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const COL = { A: '#f28c28', T: '#b36bd6', G: '#3fb950', C: '#3aa0ff' };
+  const PAIR = { A: 'T', T: 'A', G: 'C', C: 'G' };
+  const NAME = { A: 'Adenine', T: 'Thymine', G: 'Guanine', C: 'Cytosine' };
+  const HB = { A: 2, T: 2, G: 3, C: 3 };
+  const TAB = { A: true, G: true, T: false, C: false };      // A,G have tabs; T,C have notches
+  const TRI = { A: true, T: true, G: false, C: false };      // A/T triangles, G/C rounds
+  const N = 10;
+
+  const TEXT = {
+    build: ['Build the other half', 'DNA is a twisted ladder. Each rung is two bases holding hands in the middle. A always pairs with T, and G always pairs with C. Tap the letter that fits the glowing spot.'],
+    built: ['Double strand complete!', 'The sides of the ladder (the backbone) are held by strong shared-pair bonds. The rungs are held in the middle by weak hydrogen bonds: 2 for A–T and 3 for G–C. They are weak on purpose, so the cell can unzip it.'],
+    helix: ['The double helix', 'Real DNA twists around itself, one full turn about every 10 rungs, just like this piece. It is only 2 nanometers wide, about 7 water molecules across.'],
+    unzip: ['Unzipping', 'A protein machine (an enzyme) pulls the rungs apart one by one, like a zipper. Only the weak hydrogen bonds in the middle break. Both backbones stay in one piece.'],
+    unzipped: ['Two separate strands', 'Each strand is now a pattern for a brand-new partner. Press Copy!'],
+    copying: ['Copying', 'Loose bases float in and snap onto each strand, following the same rule: A with T, G with C.'],
+    copied: ['Two identical copies!', 'Each new DNA keeps one old strand (bright) and gets one new strand (lighter), and both read exactly the same. Your cells do this every time they divide, copying about 3 billion letters.']
+  };
+
+  let W = 900, H = 460, dpr = 1;
+  const S = {};
+
+  function newSeq() { const L = 'ATGC'; const a = []; for (let i = 0; i < N; i++) a.push(L[Math.floor(Math.random() * 4)]); if (!a.includes('G')) a[3] = 'G'; if (!a.includes('A')) a[6] = 'A'; return a; }
+
+  function setText(k, override) {
+    $('phaseTitle').textContent = override ? override[0] : TEXT[k][0];
+    $('phaseText').textContent = override ? override[1] : TEXT[k][1];
+    const c = $('phaseCard'); c.classList.remove('flashy'); void c.offsetWidth; c.classList.add('flashy');
+  }
+
+  // strand: seq, dir (+1 halves point down, -1 up), ya/yb backbone (start/end), t (zipper anim), placed[] times, fresh
+  function strand(seq, dir, y, fresh, placedAll) {
+    return { seq, dir, ya: y, yb: y, t: 1, placed: seq.map(() => placedAll ? 1 : -1), fresh, fly: seq.map(() => null) };
+  }
+
+  function layout() {
+    const Lh = Math.min(H * 0.15, 70);
+    return { cy: H * 0.5, Lh, xs: [...Array(N)].map((_, i) => W * 0.09 + i * (W * 0.82) / (N - 1)), w: Math.min(W * 0.82 / (N - 1) * 0.62, 46) };
+  }
+
+  function reset() {
+    const top = newSeq();
+    const L = layout();
+    Object.assign(S, {
+      mode: 'build', t: 0, auto: false, autoT: 0, m: 0, mTarget: 0, rot: 0,
+      strands: [strand(top, 1, L.cy - L.Lh, false, true), strand(top.map(b => PAIR[b]), -1, L.cy + L.Lh, false, false)],
+      next: 0, flash: [], particles: [], copyT: 0
+    });
+    S.strands[1].placed = S.strands[1].placed.map(() => -1);
+    $('twistBtn').setAttribute('aria-pressed', 'false');
+    setText('build'); buttons(); counts();
+  }
+
+  function resize() {
+    const r = cv.getBoundingClientRect();
+    W = Math.max(300, r.width); H = Math.round(Math.min(480, Math.max(330, W * 0.5)));
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (S.strands && (S.mode === 'build' || S.mode === 'built')) {
+      const L = layout(); S.strands[0].ya = S.strands[0].yb = L.cy - L.Lh; S.strands[1].ya = S.strands[1].yb = L.cy + L.Lh;
+    }
+  }
+
+  function buttons() {
+    const m = S.mode;
+    document.querySelectorAll('.base').forEach(b => b.disabled = m !== 'build');
+    $('autoBtn').disabled = m !== 'build';
+    $('twistBtn').disabled = !(m === 'built');
+    $('unzipBtn').disabled = !(m === 'built');
+    $('copyBtn').disabled = m !== 'unzipped';
+    $('autoBtn').textContent = S.auto ? 'Stop' : 'Auto-build';
+  }
+
+  function counts() {
+    let pairs = 0, hb = 0;
+    const pairsOf = (a, b) => { for (let i = 0; i < N; i++) if (a.placed[i] >= 1 && b.placed[i] >= 1 && Math.abs(yAt(a, i) + a.dir * layout().Lh - (yAt(b, i) + b.dir * layout().Lh)) < 4) { pairs++; hb += HB[a.seq[i]]; } };
+    const st = S.strands;
+    if (st.length === 2) pairsOf(st[0], st[1]); else { pairsOf(st[0], st[2]); pairsOf(st[3], st[1]); }
+    $('nPairs').textContent = st.length === 2 ? `${pairs} / ${N}` : `${pairs} / ${N * 2}`;
+    $('nH').textContent = hb;
+  }
+
+  const ease = t => t <= 0 ? 0 : t >= 1 ? 1 : (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+  function yAt(s, i) { const e = ease((s.t - i * 0.08) / 0.45); return s.ya + (s.yb - s.ya) * (s.t >= 1.8 ? 1 : e); }
+
+  // ---- building ----
+  function tryPlace(b) {
+    if (S.mode !== 'build') return;
+    const i = S.next, need = S.strands[1].seq[i];
+    const btn = document.querySelector(`.base[data-b="${b}"]`);
+    if (b !== need) {
+      btn.classList.remove('shake'); void btn.offsetWidth; btn.classList.add('shake');
+      const top = S.strands[0].seq[i];
+      setText(null, ['Doesn’t fit!', `${top} only pairs with ${PAIR[top]}. Look at the shapes: triangles fit triangles, circles fit circles.`]);
+      return;
+    }
+    place(i, b);
+  }
+  function place(i, b) {
+    const s = S.strands[1], L = layout();
+    s.placed[i] = 0; s.fly[i] = { sx: L.xs[i], sy: H + 40 };
+    S.next++;
+    if ($('phaseTitle').textContent !== TEXT.build[0]) setText('build');
+    if (S.next >= N) { S.auto = false; }
+    buttons();
+  }
+
+  function burst(x, y, col) {
+    const n = reduceMotion ? 4 : 12;
+    for (let k = 0; k < n; k++) { const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 120; S.particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.5 + Math.random() * 0.4, c: col }); }
+  }
+
+  // ---- update ----
+  function update(dt) {
+    S.t += dt;
+    const sp = +$('speed').value / 100;
+    const L = layout();
+    // placements animate
+    S.strands.forEach(s => s.placed.forEach((p, i) => {
+      if (p >= 0 && p < 1) {
+        s.placed[i] = Math.min(1, p + dt / (0.55 - sp * 0.35));
+        if (s.placed[i] >= 1) { const y = yAt(s, i) + s.dir * L.Lh; burst(L.xs[i], y, '#ffd43b'); counts(); }
+      }
+    }));
+    if (S.mode === 'build') {
+      if (S.auto && S.next < N) { S.autoT -= dt; if (S.autoT <= 0) { place(S.next, S.strands[1].seq[S.next]); S.autoT = 0.9 - sp * 0.75; } }
+      if (S.next >= N && S.strands[1].placed.every(p => p >= 1)) { S.mode = 'built'; setText('built'); buttons(); counts(); }
+    }
+    // twist
+    S.m += (S.mTarget - S.m) * Math.min(1, dt * 2.5);
+    if (Math.abs(S.m - S.mTarget) < 0.002) S.m = S.mTarget;
+    S.rot += dt * 0.9 * S.m;
+    if (S.mode === 'untwisting' && S.m < 0.005) { S.m = 0; startUnzip(); }
+    // unzip
+    if (S.mode === 'unzip') {
+      S.strands.forEach(s => s.t = Math.min(1.8, s.t + dt * (0.35 + sp * 0.6)));
+      if (S.strands[0].t >= 1.8) { S.mode = 'unzipped'; setText('unzipped'); buttons(); counts(); }
+      counts();
+    }
+    // copy
+    if (S.mode === 'copying') {
+      S.copyT -= dt;
+      if (S.copyT <= 0) {
+        const pend = [];
+        [2, 3].forEach(k => S.strands[k].placed.forEach((p, i) => { if (p < 0) pend.push([k, i]); }));
+        if (pend.length) {
+          const [k, i] = pend.shift(), s = S.strands[k];
+          s.placed[i] = 0; s.fly[i] = { sx: Math.random() < 0.5 ? -40 : W + 40, sy: H * Math.random() };
+          if (pend.length) { const [k2, i2] = pend.shift(), s2 = S.strands[k2]; s2.placed[i2] = 0; s2.fly[i2] = { sx: Math.random() < 0.5 ? -40 : W + 40, sy: H * Math.random() }; }
+          S.copyT = 0.55 - sp * 0.45;
+        } else if (S.strands[2].placed.every(p => p >= 1) && S.strands[3].placed.every(p => p >= 1)) { S.mode = 'copied'; setText('copied'); buttons(); counts(); }
+      }
+    }
+    for (const p of S.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.95; p.vy *= 0.95; p.life -= dt; }
+    S.particles = S.particles.filter(p => p.life > 0);
+  }
+
+  function startUnzip() {
+    const L = layout();
+    S.mode = 'unzip'; setText('unzip'); buttons();
+    const top = S.strands[0], bot = S.strands[1];
+    top.ya = top.yb; top.yb = Math.max(18, L.cy - 2 * L.Lh - 26); top.t = 0;
+    bot.ya = bot.yb; bot.yb = Math.min(H - 18, L.cy + 2 * L.Lh + 26); bot.t = 0;
+  }
+
+  // ---- drawing ----
+  function halfPath(x, y0, dir, len, w, b) {
+    const ym = y0 + dir * len, k = w * 0.28, tab = TAB[b], tri = TRI[b];
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, y0); ctx.lineTo(x + w / 2, y0); ctx.lineTo(x + w / 2, ym); ctx.lineTo(x + k, ym);
+    if (tri) ctx.lineTo(x, ym + (tab ? dir : -dir) * k);
+    else ctx.arc(x, ym, k, 0, Math.PI, dir > 0 ? !tab : tab);
+    ctx.lineTo(x - k, ym); ctx.lineTo(x - w / 2, ym); ctx.closePath();
+  }
+
+  function drawStrandLadder(s) {
+    const L = layout();
+    const pts = [];
+    s.seq.forEach((b, i) => {
+      const p = s.placed[i];
+      if (p < 0) return;
+      const e = ease(p);
+      let x = L.xs[i], y = yAt(s, i);
+      if (p < 1 && s.fly[i]) { x = s.fly[i].sx + (x - s.fly[i].sx) * e; y = s.fly[i].sy + (y - s.fly[i].sy) * e; }
+      ctx.save();
+      ctx.globalAlpha = s.fresh ? 0.78 : 1;
+      halfPath(x, y, s.dir, L.Lh, L.w, b);
+      ctx.fillStyle = COL[b]; ctx.fill();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.stroke();
+      if (s.fresh) { ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fill(); }
+      ctx.fillStyle = '#140d22'; ctx.font = `800 ${Math.round(Math.min(20, L.w * 0.5))}px "Baloo 2", system-ui, sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(b, x, y + s.dir * L.Lh * 0.38);
+      ctx.restore();
+      if (p >= 1) pts.push([x, y]);
+    });
+    // backbone
+    if (pts.length) {
+      ctx.save(); ctx.strokeStyle = s.fresh ? '#d9c8ff' : '#9b8bd1'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); pts.forEach(([x, y], k) => k ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      if (pts.length === 1) ctx.lineTo(pts[0][0] + 0.1, pts[0][1]);
+      ctx.stroke();
+      pts.forEach(([x, y]) => { ctx.fillStyle = '#ffb454'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); });
+      ctx.restore();
+    }
+  }
+
+  function drawHBonds(a, b) {
+    const L = layout();
+    for (let i = 0; i < N; i++) {
+      if (a.placed[i] < 1 || b.placed[i] < 1) continue;
+      const ya = yAt(a, i) + a.dir * L.Lh, yb = yAt(b, i) + b.dir * L.Lh;
+      if (Math.abs(ya - yb) > 4) continue;
+      const n = HB[a.seq[i]], x = L.xs[i], y = (ya + yb) / 2;
+      ctx.save(); ctx.strokeStyle = '#ffd43b'; ctx.lineWidth = 2; ctx.setLineDash([2, 2]);
+      for (let k = 0; k < n; k++) { const dx = (k - (n - 1) / 2) * L.w * 0.26; ctx.beginPath(); ctx.moveTo(x + dx, y - 7); ctx.lineTo(x + dx, y + 7); ctx.stroke(); }
+      ctx.restore();
+    }
+  }
+
+  function drawHelix() {
+    const L = layout(), m = S.m, A = L.Lh;
+    const [s0, s1] = S.strands;
+    const cy = (s0.ya + s1.yb) / 2 || L.cy;
+    const phase = i => i * (2 * Math.PI / 10) + S.rot;
+    // compute positions
+    const P = [];
+    for (let i = 0; i < N; i++) {
+      const th = phase(i), c = (1 - m) + m * Math.cos(th);
+      P.push({ x: L.xs[i], y0: cy - A * c, y1: cy + A * c, d: Math.sin(th) * m });
+    }
+    // backbone curves (sampled)
+    const curve = (sign, front) => {
+      ctx.beginPath();
+      for (let k = 0; k <= 180; k++) {
+        const u = k / 180 * (N - 1), th = u * (2 * Math.PI / 10) + S.rot, c = (1 - m) + m * Math.cos(th);
+        const x = L.xs[0] + u * (L.xs[1] - L.xs[0]), y = cy + sign * A * c;
+        k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.strokeStyle = front ? '#b9a8f0' : '#5e4f91'; ctx.lineWidth = 7; ctx.stroke();
+    };
+    curve(1, false); curve(-1, false);
+    // rungs sorted by depth
+    const order = P.map((p, i) => i).sort((a, b) => P[a].d - P[b].d);
+    order.forEach(i => {
+      const p = P[i], a = s0.seq[i], b = s1.seq[i], mid = (p.y0 + p.y1) / 2, alpha = 0.55 + 0.45 * (p.d + 1) / 2;
+      ctx.save(); ctx.globalAlpha = alpha; ctx.lineWidth = Math.max(4, L.w * 0.5 * (0.7 + 0.3 * (p.d + 1) / 2)); ctx.lineCap = 'butt';
+      ctx.strokeStyle = COL[a]; ctx.beginPath(); ctx.moveTo(p.x, p.y0); ctx.lineTo(p.x, mid); ctx.stroke();
+      ctx.strokeStyle = COL[b]; ctx.beginPath(); ctx.moveTo(p.x, mid); ctx.lineTo(p.x, p.y1); ctx.stroke();
+      ctx.restore();
+    });
+    // front backbone on top where it faces us
+    ctx.save(); ctx.globalAlpha = 0.9; curve(-1, true); ctx.restore();
+    ctx.save(); ctx.globalAlpha = 0.6; curve(1, true); ctx.restore();
+  }
+
+  function drawTarget() {
+    if (S.mode !== 'build' || S.next >= N) return;
+    const L = layout(), s = S.strands[1], i = S.next, x = L.xs[i], y = yAt(s, i);
+    const pulse = 0.5 + 0.5 * Math.sin(S.t * 5);
+    ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = `rgba(255,111,181,${0.5 + 0.5 * pulse})`; ctx.lineWidth = 2.5;
+    halfPath(x, y, -1, L.Lh, L.w, PAIR[S.strands[0].seq[i]]); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = 'rgba(255,111,181,0.9)'; ctx.font = `800 13px "Nunito Sans", system-ui, sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText('which letter fits here?', x, Math.min(H - 8, y + 20));
+  }
+
+  function drawLabels() {
+    const L = layout(); ctx.fillStyle = 'rgba(243,239,255,0.7)'; ctx.font = `700 12px "Nunito Sans", system-ui, sans-serif`; ctx.textAlign = 'left';
+    if (S.mode === 'build' || (S.mode === 'built' && S.m < 0.05)) {
+      ctx.fillText('backbone (strong bonds)', 10, S.strands[0].yb - 12);
+      ctx.fillStyle = '#ffd43b'; ctx.textAlign = 'right';
+      ctx.fillText('- - -  hydrogen bonds (weak)', W - 10, 18);
+    }
+    if (S.mode === 'copied') {
+      ctx.textAlign = 'left'; ctx.fillStyle = '#f3efff'; ctx.font = `800 14px "Baloo 2", system-ui, sans-serif`;
+      ctx.fillText('Copy 1', 8, S.strands[0].yb + L.Lh + 4); ctx.fillText('Copy 2', 8, S.strands[1].yb - L.Lh + 4);
+    }
+  }
+
+  function draw() {
+    const g = ctx.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, Math.max(W, H) * 0.7);
+    g.addColorStop(0, '#1d1438'); g.addColorStop(1, '#0b0816');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    if (S.m > 0.01) { drawHelix(); }
+    else {
+      S.strands.forEach(drawStrandLadder);
+      const st = S.strands;
+      drawHBonds(st[0], st[1]);
+      if (st.length > 2) { drawHBonds(st[0], st[2]); drawHBonds(st[3], st[1]); }
+      drawTarget(); drawLabels();
+    }
+    for (const p of S.particles) { ctx.save(); ctx.globalAlpha = Math.max(0, p.life * 1.6); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, 2.4, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+  }
+
+  let last = performance.now();
+  function frame(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; update(dt); draw(); requestAnimationFrame(frame); }
+
+  // ---- controls ----
+  document.querySelectorAll('.base').forEach(b => {
+    const bb = b.dataset.b;
+    b.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 34 16" aria-hidden="true"><path d="${TRI[bb] ? (TAB[bb] ? 'M4 2 H30 V8 H22 L17 14 L12 8 H4 Z' : 'M4 2 H30 V14 H22 L17 8 L12 14 H4 Z') : (TAB[bb] ? 'M4 2 H30 V8 H22 A5 5 0 0 1 12 8 H4 Z' : 'M4 2 H30 V14 H22 A5 5 0 0 0 12 14 H4 Z')}" fill="#140d22" opacity=".55"/></svg>`);
+    b.addEventListener('click', () => tryPlace(bb));
+  });
+  $('autoBtn').addEventListener('click', () => { S.auto = !S.auto; S.autoT = 0; buttons(); });
+  $('twistBtn').addEventListener('click', e => {
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', String(on)); S.mTarget = on ? 1 : 0;
+    setText(on ? 'helix' : 'built');
+  });
+  $('unzipBtn').addEventListener('click', () => {
+    if (S.mode !== 'built') return;
+    $('twistBtn').setAttribute('aria-pressed', 'false');
+    if (S.m > 0.01) { S.mTarget = 0; S.mode = 'untwisting'; setText('unzip'); buttons(); } else startUnzip();
+  });
+  $('copyBtn').addEventListener('click', () => {
+    if (S.mode !== 'unzipped') return;
+    const L = layout(), top = S.strands[0], bot = S.strands[1];
+    const n1 = strand(top.seq.map(b => PAIR[b]), -1, top.yb + 2 * L.Lh, true, false);
+    const n2 = strand(bot.seq.map(b => PAIR[b]), 1, bot.yb - 2 * L.Lh, true, false);
+    S.strands.push(n1, n2); S.mode = 'copying'; S.copyT = 0; setText('copying'); buttons();
+  });
+  $('resetBtn').addEventListener('click', reset);
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    const k = e.key.toUpperCase(); if ('ATGC'.includes(k) && k.length === 1) tryPlace(k);
+  });
+  document.querySelectorAll('button, canvas').forEach(el => el.addEventListener('contextmenu', e => e.preventDefault()));
+  window.addEventListener('resize', () => { resize(); });
+
+  resize(); reset(); requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

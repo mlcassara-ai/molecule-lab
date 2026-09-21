@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Molecule Lab">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+</head>
+<body>
+<title>One Drop Zoom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito+Sans:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root {
+    --ink: #07121e; --panel: #0f2135; --panel-2: #173050; --line: #25446a;
+    --text: #e8f3fc; --muted: #9ab6d1; --water: #3aa0ff; --o: #ef4b43; --gold: #ffd43b;
+    --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  html, body { background: var(--ink); color: var(--text); -webkit-text-size-adjust: 100%; }
+  body { font-family: var(--body); font-size: 15px; line-height: 1.45; -webkit-tap-highlight-color: transparent; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 32px; display: grid; gap: 14px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 5vw, 40px); line-height: 1; margin: 0; letter-spacing: -0.5px; }
+  h1 span { color: var(--water); }
+  .tag { color: var(--muted); font-size: 14px; max-width: 50ch; text-wrap: balance; }
+  .stage { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #041019; }
+  canvas { display: block; width: 100%; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .hud { position: absolute; left: 12px; top: 10px; display: grid; gap: 2px; pointer-events: none; }
+  .hud .w { font-family: var(--mono); font-weight: 700; font-size: 20px; color: var(--gold); text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+  .hud .l { font-size: 12px; color: var(--text); opacity: .85; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { font-family: var(--display); font-weight: 600; font-size: 16px; border: 0; border-radius: 10px; padding: 8px 16px 6px; cursor: pointer; color: var(--ink); background: var(--text); -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  button.go { background: var(--water); }
+  button.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--line); }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .slider { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; flex: 1 1 220px; min-width: 0; }
+  .slider label { font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+  input[type=range] { width: 100%; accent-color: var(--water); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chips .lbl { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+  .chip { font-family: var(--body); font-weight: 700; font-size: 13.5px; padding: 6px 11px; border-radius: 999px; background: var(--panel-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+  .chip[aria-current="true"] { background: var(--water); color: var(--ink); }
+  .cards { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }
+  @media (max-width: 820px) { .cards { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+  .card h2 { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin: 0; font-weight: 600; }
+  #seeTitle { font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1.1; }
+  .big { font-family: var(--mono); font-weight: 700; font-size: 15px; color: var(--gold); word-break: break-all; }
+  .row { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; border-bottom: 1px solid var(--line); padding: 4px 0; }
+  .row b { font-family: var(--mono); color: var(--text); text-align: right; }
+  .note { font-size: 12.5px; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+<a href="index.html" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
+
+
+<div class="wrap">
+  <header>
+    <h1>One Drop <span>Zoom</span></h1>
+    <div class="tag">Start with one water molecule, then zoom out until you can see the whole drop sitting on a dime. Things of known size show up along the way.</div>
+  </header>
+
+  <div class="stage">
+    <canvas id="c" aria-label="Zoomable view from one water molecule out to a whole drop of water"></canvas>
+    <div class="hud"><div class="w" id="hudW">1 nm</div><div class="l">width of the screen</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="btns">
+      <button class="go" id="playBtn">Zoom out</button>
+      <button class="ghost" id="inBtn">Zoom in</button>
+      <button class="ghost" id="resetBtn">Start over</button>
+    </div>
+    <div class="slider"><label for="zoom">Zoom</label><input type="range" id="zoom" min="0" max="1000" value="0"></div>
+    <div class="slider" style="flex-basis:160px"><label for="speed">Speed</label><input type="range" id="speed" min="10" max="100" value="40"></div>
+  </div>
+
+  <div class="chips" id="chips"><span class="lbl">Jump to</span></div>
+
+  <div class="cards">
+    <div class="card">
+      <h2>What you're seeing</h2>
+      <div id="seeTitle">One water molecule</div>
+      <div id="seeText"></div>
+    </div>
+    <div class="card">
+      <h2>Counting molecules</h2>
+      <div class="row"><span>Water molecules side by side across the screen</span><b id="across">3</b></div>
+      <div class="row"><span>Molecules to cross the whole drop</span><b>15 million</b></div>
+      <div class="row"><span>Molecules in the whole drop</span><b>1.7 sextillion</b></div>
+      <div class="big">1,700,000,000,000,000,000,000</div>
+      <div class="note">Drop: 0.05 mL, about 4.6 mm wide. Molecules in liquid water sit about 0.31 nm apart. Pinch or scroll on the picture to zoom yourself.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- real sizes (meters) ----
+  const NM = 1e-9, UM = 1e-6, MM = 1e-3;
+  const SPACING = 0.31 * NM;            // molecule-to-molecule in liquid water
+  const DROP_R = 2.3 * MM;              // 0.05 mL sphere
+  const DIME_R = 8.95 * MM;             // 17.9 mm coin
+  const Z_MIN = Math.log10(0.9 * NM), Z_MAX = Math.log10(40 * MM);
+
+  // reference objects (world coords, meters; origin = center of the drop)
+  const REFS = [
+    { key: 'virus', name: 'Flu virus', size: '100 nm', x: 115 * NM, y: -35 * NM, r: 50 * NM },
+    { key: 'bact', name: 'Bacterium', size: '2 µm long', x: 2.6 * UM, y: 1.3 * UM, r: 1 * UM },
+    { key: 'rbc', name: 'Red blood cell', size: '7.5 µm', x: -11 * UM, y: 4.5 * UM, r: 3.75 * UM },
+    { key: 'hair', name: 'Human hair', size: '80 µm thick', x: 160 * UM, y: 0, r: 40 * UM },
+    { key: 'sand', name: 'Grain of sand', size: '0.5 mm', x: -1.25 * MM, y: 0.85 * MM, r: 0.25 * MM },
+    { key: 'drop', name: 'One drop of water', size: '4.6 mm', x: 0, y: 0, r: DROP_R },
+    { key: 'dime', name: 'A dime', size: '18 mm', x: 0, y: 0, r: DIME_R }
+  ];
+
+  const STOPS = [
+    { label: 'Molecule', w: 1.1 * NM },
+    { label: 'Crowd', w: 9 * NM },
+    { label: 'Virus', w: 450 * NM },
+    { label: 'Bacterium', w: 8 * UM },
+    { label: 'Blood cell', w: 45 * UM },
+    { label: 'Hair', w: 700 * UM },
+    { label: 'Sand', w: 3.5 * MM },
+    { label: 'Drop', w: 9 * MM },
+    { label: 'Dime', w: 30 * MM }
+  ];
+
+  let W = 900, H = 500, dpr = 1;
+  const S = { z: Math.log10(1.1 * NM), dir: 0, target: null, t: 0, build: 0 };
+
+  function resize() {
+    const r = cv.getBoundingClientRect();
+    W = Math.max(300, r.width); H = Math.round(Math.min(560, Math.max(340, W * 0.6)));
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  const viewW = () => Math.pow(10, S.z);
+  const scale = () => W / viewW();            // px per meter
+  const sx = x => W / 2 + x * scale();
+  const sy = y => H / 2 + y * scale();
+
+  // ---- formatting ----
+  function fmtLen(m) {
+    const u = [[1e-9, 'nm'], [1e-6, 'µm'], [1e-3, 'mm'], [1e-2, 'cm']];
+    let best = u[0];
+    for (const x of u) if (m >= x[0] * 0.999) best = x;
+    const v = m / best[0];
+    return (v >= 100 ? Math.round(v) : v >= 10 ? v.toFixed(0) : v.toFixed(1).replace(/\.0$/, '')) + ' ' + best[1];
+  }
+  function fmtCount(n) {
+    if (n < 1000) return Math.round(n).toLocaleString();
+    const units = [[1e12, 'trillion'], [1e9, 'billion'], [1e6, 'million'], [1e3, 'thousand']];
+    for (const [v, w] of units) if (n >= v) { const x = n / v; return (x >= 100 ? Math.round(x) : x >= 10 ? x.toFixed(0) : x.toFixed(1)) + ' ' + w; }
+  }
+
+  // ---- hash for stable random molecules ----
+  function hash(i, j, k = 0) {
+    let h = i * 374761393 + j * 668265263 + k * 1274126177;
+    h = (h ^ (h >>> 13)) * 1274126177; h = h ^ (h >>> 16);
+    return (h >>> 0) / 4294967295;
+  }
+
+  // ---- drawing ----
+  function drawWaterMol(x, y, ang, px, alpha, hero) {
+    // px = pixels per nm
+    const rO = 0.115 * px, rH = 0.075 * px, bl = 0.085 * px;
+    const a1 = ang + 0.912, a2 = ang - 0.912;
+    ctx.globalAlpha = alpha;
+    for (const a of [a1, a2]) {
+      const hx = x + Math.cos(a) * bl * 1.25, hy = y + Math.sin(a) * bl * 1.25;
+      ctx.fillStyle = '#f4f7fb';
+      ctx.beginPath(); ctx.arc(hx, hy, rH, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = '#ef4b43'; ctx.beginPath(); ctx.arc(x, y, rO, 0, Math.PI * 2); ctx.fill();
+    if (px > 60) {
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(x - rO * 0.35, y - rO * 0.35, rO * 0.3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawMolecules() {
+    const vw = viewW(), pxPerNm = scale() * NM;
+    const across = vw / SPACING;
+    if (across > 34) return 0;
+    const alpha = across < 14 ? 1 : 1 - (across - 14) / 20;
+    const sp = SPACING, half = vw / 2, halfH = half * H / W;
+    const i0 = Math.floor(-half / sp) - 1, i1 = Math.ceil(half / sp) + 1;
+    const j0 = Math.floor(-halfH / sp) - 1, j1 = Math.ceil(halfH / sp) + 1;
+    const t = S.t;
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+      if (i === 0 && j === 0) continue;
+      const jx = (hash(i, j, 1) - 0.5) * 0.55 * sp + Math.sin(t * 1.3 + hash(i, j, 3) * 6) * 0.04 * sp;
+      const jy = (hash(i, j, 2) - 0.5) * 0.55 * sp + Math.cos(t * 1.1 + hash(i, j, 4) * 6) * 0.04 * sp;
+      const ang = hash(i, j, 5) * Math.PI * 2 + t * (hash(i, j, 6) - 0.5) * 0.6;
+      drawWaterMol(sx(i * sp + jx), sy(j * sp + jy), ang, pxPerNm, alpha * (across < 6 ? 0.45 : 0.8), false);
+    }
+    return alpha;
+  }
+
+  function drawHero() {
+    const pxPerNm = scale() * NM;
+    const across = viewW() / SPACING;
+    if (across > 34) return;
+    const alpha = across < 14 ? 1 : 1 - (across - 14) / 20;
+    const cx = sx(0), cy = sy(0);
+    // assemble animation
+    const b = Math.min(1, S.build);
+    const e = b < 0.5 ? 2 * b * b : 1 - Math.pow(-2 * b + 2, 2) / 2;
+    const rO = 0.115 * pxPerNm, rH = 0.075 * pxPerNm, bl = 0.105 * pxPerNm, ang = Math.PI / 2;
+    ctx.save(); ctx.globalAlpha = alpha;
+    // glow ring to find it
+    ctx.strokeStyle = 'rgba(255,212,59,0.8)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.arc(cx, cy + bl * 0.4, 0.3 * pxPerNm, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    const hs = [ang + 0.912, ang - 0.912].map((a, k) => {
+      const tx = cx + Math.cos(a) * bl, ty = cy + Math.sin(a) * bl;
+      const fx = cx + (k ? 1 : -1) * W * 0.4, fy = cy - H * 0.3;
+      return { x: fx + (tx - fx) * e, y: fy + (ty - fy) * e };
+    });
+    if (e > 0.9) { ctx.strokeStyle = 'rgba(255,212,59,0.9)'; ctx.lineWidth = Math.max(2, 0.03 * pxPerNm); hs.forEach(h => { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(h.x, h.y); ctx.stroke(); }); }
+    hs.forEach(h => { ctx.fillStyle = '#f4f7fb'; ctx.beginPath(); ctx.arc(h.x, h.y, rH, 0, Math.PI * 2); ctx.fill(); });
+    ctx.fillStyle = '#ef4b43'; ctx.beginPath(); ctx.arc(cx, cy, rO, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(cx - rO * 0.35, cy - rO * 0.35, rO * 0.3, 0, Math.PI * 2); ctx.fill();
+    if (pxPerNm > 120) {
+      ctx.fillStyle = '#fff'; ctx.font = `800 ${Math.round(Math.min(28, rO * 0.7))}px "Baloo 2", system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('O', cx, cy + 1);
+      ctx.fillStyle = '#0b1724'; ctx.font = `800 ${Math.round(Math.min(22, rH * 0.8))}px "Baloo 2", system-ui, sans-serif`;
+      hs.forEach(h => ctx.fillText('H', h.x, h.y + 1));
+    }
+    ctx.restore();
+    if (e >= 1) labelAt(cx, cy - 0.34 * pxPerNm, 'This one water molecule', '0.28 nm across', alpha);
+  }
+
+  function labelAt(x, y, t1, t2, alpha = 1) {
+    ctx.save(); ctx.globalAlpha = alpha;
+    ctx.font = `800 15px "Baloo 2", system-ui, sans-serif`;
+    const w = Math.max(ctx.measureText(t1).width, 60) + 18;
+    ctx.fillStyle = 'rgba(7,18,30,0.82)';
+    const bx = Math.max(6, Math.min(W - w - 6, x - w / 2)), by = Math.max(46, Math.min(H - 52, y - 44));
+    roundRect(bx, by, w, 40, 8); ctx.fill();
+    ctx.fillStyle = '#e8f3fc'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(t1, bx + w / 2, by + 18);
+    ctx.fillStyle = '#ffd43b'; ctx.font = `700 12px "JetBrains Mono", monospace`;
+    ctx.fillText(t2, bx + w / 2, by + 33);
+    ctx.restore();
+  }
+  function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+  function onScreen(x, y, r) { return x + r > 0 && x - r < W && y + r > 0 && y - r < H; }
+
+  function drawTable() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#2a1d12'); g.addColorStop(1, '#1b120a');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(255,220,180,0.05)'; ctx.lineWidth = 2;
+    for (let y = 0; y < H; y += 14) { ctx.beginPath(); ctx.moveTo(0, y + Math.sin(y) * 3); ctx.lineTo(W, y + Math.cos(y) * 3); ctx.stroke(); }
+  }
+
+  function bigCircle(x, y, r) {
+    // returns false if circle covers the whole screen
+    const corners = [[0, 0], [W, 0], [0, H], [W, H]];
+    return corners.every(([cx, cy]) => Math.hypot(cx - x, cy - y) < r);
+  }
+
+  function drawDime() {
+    const s = scale(), x = sx(0), y = sy(0), r = DIME_R * s;
+    if (bigCircle(x, y, r)) { ctx.fillStyle = '#b9c2cc'; ctx.fillRect(0, 0, W, H); return; }
+    const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+    g.addColorStop(0, '#eef2f6'); g.addColorStop(0.6, '#b9c2cc'); g.addColorStop(1, '#7d8792');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    // ridged rim
+    if (r > 40) {
+      ctx.strokeStyle = 'rgba(80,90,100,0.6)'; ctx.lineWidth = Math.max(1, r * 0.006);
+      const n = 118;
+      for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * 0.965, y + Math.sin(a) * r * 0.965); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); ctx.stroke(); }
+      ctx.strokeStyle = 'rgba(90,100,110,0.45)'; ctx.lineWidth = Math.max(1, r * 0.01);
+      ctx.beginPath(); ctx.arc(x, y, r * 0.9, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  function drawDrop() {
+    const s = scale(), x = sx(0), y = sy(0), r = DROP_R * s;
+    if (bigCircle(x, y, r)) {
+      const g = ctx.createRadialGradient(W * 0.4, H * 0.35, 10, W / 2, H / 2, Math.max(W, H));
+      g.addColorStop(0, '#1f7fd6'); g.addColorStop(1, '#0c3d6e');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); return true;
+    }
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = Math.min(40, r * 0.15); ctx.shadowOffsetY = Math.min(12, r * 0.05);
+    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.05, x, y, r);
+    g.addColorStop(0, 'rgba(210,238,255,0.95)'); g.addColorStop(0.35, 'rgba(90,170,240,0.85)'); g.addColorStop(1, 'rgba(20,90,170,0.9)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(x - r * 0.38, y - r * 0.42, r * 0.18, r * 0.09, -0.6, 0, Math.PI * 2); ctx.fill();
+    return false;
+  }
+
+  function drawRefs(inside) {
+    const s = scale();
+    // virus
+    let R = REFS[0], x = sx(R.x), y = sy(R.y), r = R.r * s;
+    if (r > 3 && onScreen(x, y, r * 1.4)) {
+      ctx.save(); ctx.fillStyle = '#b36bd6'; ctx.strokeStyle = '#e0b3f5'; ctx.lineWidth = Math.max(1, r * 0.05);
+      for (let k = 0; k < 28; k++) { const a = k / 28 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); ctx.lineTo(x + Math.cos(a) * r * 1.25, y + Math.sin(a) * r * 1.25); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+    // bacterium (capsule)
+    R = REFS[1]; x = sx(R.x); y = sy(R.y); r = R.r * s;
+    if (r > 2 && onScreen(x, y, r * 1.2)) {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(-0.4);
+      ctx.fillStyle = '#5fbf6a'; ctx.strokeStyle = '#2f7a3a'; ctx.lineWidth = Math.max(1, r * 0.06);
+      const L = r, w = r * 0.25; roundRect(-L, -w, 2 * L, 2 * w, w); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(95,191,106,0.7)'; ctx.lineWidth = Math.max(1, r * 0.02);
+      for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(L, (k - 1) * w * 0.5); ctx.bezierCurveTo(L * 1.3, (k - 1) * w - w, L * 1.5, (k - 1) * w + w, L * 1.8, (k - 1) * w); ctx.stroke(); }
+      ctx.restore();
+    }
+    // red blood cell
+    R = REFS[2]; x = sx(R.x); y = sy(R.y); r = R.r * s;
+    if (r > 2 && onScreen(x, y, r)) {
+      const g = ctx.createRadialGradient(x, y, r * 0.1, x, y, r);
+      g.addColorStop(0, '#e06a6a'); g.addColorStop(0.45, '#c93c3c'); g.addColorStop(1, '#8e1f1f');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+    // hair: vertical strand
+    R = REFS[3]; x = sx(R.x); r = R.r * s;
+    if (r > 1 && x + r > 0 && x - r < W) {
+      const g = ctx.createLinearGradient(x - r, 0, x + r, 0);
+      g.addColorStop(0, '#3b2414'); g.addColorStop(0.45, '#7a5232'); g.addColorStop(1, '#2e1a0e');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, 0, 2 * r, H);
+      if (r > 20) { ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; for (let yy = (sy(0) % (r * 0.6)); yy < H; yy += r * 0.6) { ctx.beginPath(); ctx.moveTo(x - r, yy); ctx.lineTo(x + r, yy + r * 0.3); ctx.stroke(); } }
+    }
+    // sand grain
+    R = REFS[4]; x = sx(R.x); y = sy(R.y); r = R.r * s;
+    if (r > 2 && onScreen(x, y, r)) {
+      ctx.save(); ctx.fillStyle = '#d9b77a'; ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = Math.max(1, r * 0.04);
+      ctx.beginPath();
+      for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2, rr = r * (0.8 + 0.2 * hash(k, 7)); ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+      ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+    }
+  }
+
+  function drawLabels() {
+    const s = scale();
+    for (const R of REFS) {
+      const r = R.r * s;
+      const x = sx(R.x), y = sy(R.y);
+      if (R.key === 'hair') { if (r > 6 && r < W * 0.4 && x > 0 && x < W) labelAt(Math.min(W - 80, x + r + 70), H * 0.3, R.name, R.size); continue; }
+      if (r < 8 || r > Math.min(W, H) * 0.48 || !onScreen(x, y, r)) continue;
+      labelAt(x, y - r - 2, R.name, R.size);
+    }
+  }
+
+  function drawScaleBar() {
+    const s = scale(), target = W * 0.22 / s;
+    const p = Math.pow(10, Math.floor(Math.log10(target)));
+    let len = p; for (const m of [1, 2, 5]) if (m * p <= target) len = m * p;
+    const px = len * s, x = W - px - 18, y = H - 22;
+    ctx.save(); ctx.fillStyle = 'rgba(7,18,30,0.75)'; roundRect(x - 10, y - 26, px + 20, 38, 8); ctx.fill();
+    ctx.strokeStyle = '#ffd43b'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + px, y); ctx.moveTo(x, y - 6); ctx.lineTo(x, y + 6); ctx.moveTo(x + px, y - 6); ctx.lineTo(x + px, y + 6); ctx.stroke();
+    ctx.fillStyle = '#ffd43b'; ctx.font = `700 13px "JetBrains Mono", monospace`; ctx.textAlign = 'center'; ctx.fillText(fmtLen(len), x + px / 2, y - 10);
+    ctx.restore();
+  }
+
+  function drawWaterHaze(inside) {
+    // between "molecules drawn" and "drop visible": show that the blue is molecules
+    const across = viewW() / SPACING;
+    if (!inside || across < 20) return;
+    ctx.save();
+    const a = Math.min(0.5, (across - 20) / 60);
+    ctx.globalAlpha = a;
+    for (let k = 0; k < 160; k++) {
+      const x = hash(k, 11) * W, y = hash(k, 12) * H;
+      ctx.fillStyle = hash(k, 13) > 0.5 ? 'rgba(255,255,255,0.25)' : 'rgba(10,40,80,0.25)';
+      ctx.fillRect(x, y, 2, 2);
+    }
+    ctx.restore();
+  }
+
+  // ---- text panel ----
+  const SEE = [
+    [1.6 * NM, 'One water molecule', 'Two hydrogens (white) sharing electrons with one oxygen (red). It is about 0.28 nanometers across. A nanometer is a billionth of a meter.'],
+    [30 * NM, 'A crowd of water molecules', 'In liquid water the molecules are packed shoulder to shoulder, tumbling and sliding past each other all the time. That sliding is why water pours.'],
+    [1.2 * UM, 'Too tiny to draw one by one', 'Now each molecule is smaller than a pixel. All that blue is water molecules, far too many to draw. The purple ball is a flu virus: about 330 water molecules wide.'],
+    [12 * UM, 'A bacterium', 'A single bacterium is about 2 µm long (a micrometer is a millionth of a meter). It could swim in this drop, surrounded by billions of water molecules.'],
+    [120 * UM, 'A red blood cell', 'Your blood is full of these little red disks, each about 7.5 µm across. That is roughly 24,000 water molecules side by side.'],
+    [1.8 * MM, 'A human hair', 'A hair is about 80 µm thick, the width of about 260,000 water molecules lined up. We are still inside the drop!'],
+    [6 * MM, 'A grain of sand', 'Half a millimeter wide. You could finally see this with your own eyes, and 1.6 million water molecules would stretch across it.'],
+    [Infinity, 'One drop of water, on a dime', 'The whole drop is about 4.6 mm wide. About 15 million molecules would cross it side by side, and the whole drop holds about 1.7 sextillion. If everyone on Earth shared this one drop, each person would get about 200 billion molecules.']
+  ];
+  let lastSee = -1;
+  function updatePanel() {
+    const vw = viewW();
+    $('hudW').textContent = fmtLen(vw);
+    $('across').textContent = fmtCount(vw / SPACING);
+    let k = SEE.findIndex(s => vw < s[0]);
+    if (k !== lastSee) { lastSee = k; $('seeTitle').textContent = SEE[k][1]; $('seeText').textContent = SEE[k][2]; }
+    const sl = $('zoom'); if (document.activeElement !== sl) sl.value = Math.round((S.z - Z_MIN) / (Z_MAX - Z_MIN) * 1000);
+    let cur = 0, bd = 1e9; STOPS.forEach((st, i) => { const d = Math.abs(Math.log10(st.w) - S.z); if (d < bd) { bd = d; cur = i; } });
+    document.querySelectorAll('.chip').forEach((c, i) => c.setAttribute('aria-current', String(i === cur && bd < 0.3)));
+  }
+
+  // ---- loop ----
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    S.t += dt; S.build = Math.min(1, S.build + dt / (reduceMotion ? 0.01 : 1.4));
+    const sp = +$('speed').value / 100 * 0.9;
+    if (S.target !== null) {
+      const d = S.target - S.z; S.z += d * Math.min(1, dt * 2.2);
+      if (Math.abs(d) < 0.002) { S.z = S.target; S.target = null; }
+    } else if (S.dir) {
+      S.z += S.dir * sp * dt;
+      if (S.z >= Z_MAX || S.z <= Z_MIN) { S.z = Math.max(Z_MIN, Math.min(Z_MAX, S.z)); S.dir = 0; syncPlay(); }
+    }
+    draw(); updatePanel();
+    requestAnimationFrame(frame);
+  }
+
+  function draw() {
+    drawTable();
+    drawDime();
+    const inside = drawDrop();
+    ctx.save();
+    if (!inside) { ctx.beginPath(); ctx.arc(sx(0), sy(0), DROP_R * scale(), 0, Math.PI * 2); ctx.clip(); }
+    drawWaterHaze(inside);
+    drawMolecules();
+    drawRefs(inside);
+    ctx.restore();
+    // things outside the drop too (hair crosses it, sand sits inside)
+    if (!inside) { const s = scale(); if (REFS[3].r * s > 1) { /* hair drawn only inside for simplicity */ } }
+    drawHero();
+    drawLabels();
+    drawScaleBar();
+  }
+
+  // ---- controls ----
+  function syncPlay() { $('playBtn').textContent = S.dir > 0 ? 'Pause' : 'Zoom out'; $('inBtn').textContent = S.dir < 0 ? 'Pause' : 'Zoom in'; }
+  $('playBtn').addEventListener('click', () => { S.target = null; if (S.z >= Z_MAX - 0.01) S.z = Z_MIN; S.dir = S.dir > 0 ? 0 : 1; syncPlay(); });
+  $('inBtn').addEventListener('click', () => { S.target = null; S.dir = S.dir < 0 ? 0 : -1; syncPlay(); });
+  $('resetBtn').addEventListener('click', () => { S.dir = 0; S.target = null; S.z = Math.log10(1.1 * NM); S.build = 0; syncPlay(); });
+  $('zoom').addEventListener('input', e => { S.dir = 0; S.target = null; syncPlay(); S.z = Z_MIN + (+e.target.value / 1000) * (Z_MAX - Z_MIN); });
+  const chips = $('chips');
+  STOPS.forEach(st => {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = st.label;
+    b.addEventListener('click', () => { S.dir = 0; syncPlay(); S.target = Math.log10(st.w); });
+    chips.appendChild(b);
+  });
+
+  // wheel + pinch
+  cv.addEventListener('wheel', e => { e.preventDefault(); S.dir = 0; S.target = null; syncPlay(); S.z = Math.max(Z_MIN, Math.min(Z_MAX, S.z + e.deltaY * 0.0015)); }, { passive: false });
+  const pts = new Map(); let pinch0 = null;
+  cv.addEventListener('pointerdown', e => { pts.set(e.pointerId, [e.clientX, e.clientY]); cv.setPointerCapture(e.pointerId); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: S.z }; S.dir = 0; S.target = null; syncPlay(); } });
+  cv.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId)) return; const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pts.size === 2 && pinch0) { const [a, b] = [...pts.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); S.z = Math.max(Z_MIN, Math.min(Z_MAX, pinch0.z - Math.log10(d / pinch0.d) * 1.5)); }
+    else if (pts.size === 1) { S.dir = 0; S.target = null; syncPlay(); S.z = Math.max(Z_MIN, Math.min(Z_MAX, S.z + (e.clientY - prev[1]) * 0.008)); }
+  });
+  const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch0 = null; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+    if (e.key === ' ') { e.preventDefault(); $('playBtn').click(); }
+  });
+  window.addEventListener('resize', resize);
+  resize(); syncPlay(); requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

@@ -88,7 +88,7 @@
   .progress { height: 8px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
   .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--mint), var(--gold)); }
 </style>
-<a href="index.html?v=2" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
+<a href="index.html?v=3" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
 
 
 <div class="wrap">
@@ -117,6 +117,7 @@
         <button class="ghost" id="pauseBtn">Pause</button>
         <button id="shakeBtn">🔥 Shake (3)</button>
         <button class="ghost" id="hintBtn">Hints: on</button>
+        <button class="ghost" id="soundBtn">🔊 Sound</button>
       </div>
     </div>
 
@@ -328,7 +329,7 @@
   function gasStep() {
     Composite.allBodies(engine.world).forEach(b => {
       const P = b.plugin; if (!P || !P.gasAt || P.dead || S.t < P.gasAt) return;
-      if (!P.rising) { P.rising = true; b.isSensor = true; b.collisionFilter.mask = 0; ring(b.position.x, b.position.y, '#cfe3ff', 8); }
+      if (!P.rising) { SFX.gas(); P.rising = true; b.isSensor = true; b.collisionFilter.mask = 0; ring(b.position.x, b.position.y, '#cfe3ff', 8); }
       Body.setVelocity(b, { x: Math.sin(S.t * 3 + b.id) * 0.8, y: -2.6 });
       if (b.position.y < -40) { P.dead = true; Composite.remove(engine.world, b); }
     });
@@ -374,7 +375,7 @@
       if (!targets.length) continue;
       if (!fitsSome(addF(formula(M.cl), formula(Hc.cl)))) continue;
       const t = targets.sort((p, q) => dist(p, mover) - dist(q, mover))[0];
-      M.seek = { target: t, until: S.t + 2.2 };
+      M.seek = { target: t, until: S.t + 2.2 }; SFX.slide();
       if (!S.seekMsgT || S.t - S.seekMsgT > 6) {
         S.seekMsgT = S.t;
         event('Sliding to an open hand', 'That spot was full (no free hand there), so the atom keeps bumping around until it finds a hand that is free. Real atoms bump billions of times a second, so they find the open spot almost instantly.', '');
@@ -399,7 +400,7 @@
   // ---- shake (heat): everything jiggles faster, so more bumps and more bonds
   function shake() {
     if (S.over || S.paused || S.shakes <= 0 || S.shakeT > 0) return;
-    S.shakes--; S.shakeT = 2.0; engine.gravity.y = 0.3; shakeBtn();
+    SFX.shake(); S.shakes--; S.shakeT = 2.0; engine.gravity.y = 0.3; shakeBtn();
     // half-built pieces are wobbly: heat shakes them apart so their atoms can try again. Finished molecules are strong and stay.
     let broke = 0;
     [...S.clusters.entries()].forEach(([cl, mem]) => {
@@ -419,6 +420,52 @@
     if (Math.random() < 0.5) Composite.allBodies(engine.world).forEach(b => { if (!b.isStatic && b.plugin && b.plugin.kind && !b.plugin.rising && b.position.y > TOPLINE) Body.applyForce(b, b.position, { x: (Math.random() - 0.5) * b.mass * 0.004, y: -Math.random() * b.mass * 0.003 }); });
   }
   function shakeBtn() { const el = $('shakeBtn'); if (!el) return; el.textContent = `🔥 Shake (${S.shakes})`; el.disabled = S.shakes <= 0; }
+
+  // ---------------- sound: made on the fly with the browser's synthesizer, no audio files ----------------
+  let soundOn = true;
+  const SFX = (() => {
+    let ac = null, master = null; const last = {};
+    function ctx() {
+      if (!ac) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ac = new A(); master = ac.createGain(); master.gain.value = 0.55; master.connect(ac.destination); }
+      if (ac.state === 'suspended') ac.resume();
+      return ac;
+    }
+    function ok(name, gap) { if (!soundOn || !ctx()) return false; const now = ac.currentTime; if (last[name] && now - last[name] < (gap || 0.05)) return false; last[name] = now; return true; }
+    function tone(f, dur, type, vol, at, to) {
+      const t0 = ac.currentTime + (at || 0), o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || 'sine'; o.frequency.setValueAtTime(f, t0); if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.15, t0 + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    let nbuf = null;
+    function noise(dur, vol, ftype, freq, at, to) {
+      if (!nbuf) { nbuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = nbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+      const t0 = ac.currentTime + (at || 0), src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      src.buffer = nbuf; src.loop = true; f.type = ftype || 'bandpass'; f.frequency.setValueAtTime(freq || 1000, t0); if (to) f.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.15, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(f); f.connect(g); g.connect(master); src.start(t0); src.stop(t0 + dur + 0.05);
+    }
+    const PENTA = [523, 659, 784, 1047, 1319, 1568];
+    return {
+      unlock() { if (soundOn) ctx(); },
+      drop() { if (ok('drop', 0.08)) tone(560, 0.09, 'sine', 0.14, 0, 360); },
+      bond() { if (ok('bond', 0.07)) { tone(1100, 0.04, 'square', 0.035); tone(1650, 0.07, 'triangle', 0.08, 0.02); } },
+      molecule(size) { if (!ok('mol', 0.12)) return; const n = Math.min(6, 2 + Math.floor((size || 2) / 2)); for (let i = 0; i < n; i++) tone(PENTA[i], 0.35 - i * 0.02, 'triangle', 0.1, i * 0.065); },
+      discover() { if (!ok('disc', 0.4)) return; [523, 659, 784].forEach((f, i) => tone(f, 0.14, 'square', 0.05, 0.25 + i * 0.1)); [1047, 1319, 1568].forEach(f => tone(f, 0.7, 'triangle', 0.07, 0.55)); },
+      nope() { if (ok('nope', 0.3)) tone(240, 0.16, 'sine', 0.12, 0, 150); },
+      slide() { if (ok('slide', 0.4)) tone(380, 0.35, 'sine', 0.09, 0, 950); },
+      shake() { if (!ok('shake', 0.5)) return; noise(1.6, 0.3, 'lowpass', 180); noise(1.4, 0.06, 'highpass', 3500); tone(70, 1.2, 'sawtooth', 0.05, 0, 55); },
+      gas() { if (ok('gas', 0.15)) { tone(300, 0.22, 'sine', 0.07, 0, 720); tone(420, 0.18, 'sine', 0.05, 0.08, 900); } },
+      fire() { if (ok('fire', 0.2)) { noise(0.6, 0.22, 'bandpass', 600, 0, 2400); noise(0.5, 0.05, 'highpass', 5000, 0.05); } },
+      bolt() { if (ok('bolt', 0.2)) { noise(0.25, 0.3, 'highpass', 3000); tone(110, 0.35, 'sawtooth', 0.14, 0, 40); } },
+      sun() { if (!ok('sun', 0.3)) return; [1175, 1568, 1976, 2349, 1760].forEach((f, i) => tone(f, 0.4, 'sine', 0.05, i * 0.06)); },
+      press() { if (ok('press', 0.2)) { tone(95, 0.3, 'square', 0.14, 0, 45); noise(0.18, 0.2, 'lowpass', 300); } },
+      diamond() { if (!ok('dia', 0.5)) return; [1568, 2093, 2637, 3136, 2637, 3136, 4186].forEach((f, i) => tone(f, 0.25, 'triangle', 0.07, i * 0.07)); },
+      fizzle() { if (ok('fizz', 0.2)) tone(620, 0.18, 'sine', 0.05, 0, 280); },
+      bonus() { if (ok('bonus', 0.2)) tone(1760, 0.12, 'sine', 0.05, 0.12); },
+      over() { if (!ok('over', 1)) return; [392, 370, 349, 311].forEach((f, i) => tone(f, i === 3 ? 0.8 : 0.32, 'sawtooth', 0.06, i * 0.3, f * 0.94)); }
+    };
+  })();
 
   // ---------------- chemistry helpers ----------------
   function formula(cl) { const f = {}; for (const b of S.clusters.get(cl) || []) f[b.plugin.key] = (f[b.plugin.key] || 0) + 1; return f; }
@@ -463,7 +510,7 @@
   function nope(a, b, f) {
     const L = S.lastDrop; if (!L || !L.plugin || L.plugin.kind !== 'atom' || S.t - L.plugin.born > 4) return;
     const mine = L.plugin.cl; if (a.plugin.cl !== mine && b.plugin.cl !== mine) return;
-    if (S.t - (S.nopeT || -9) < 2.5) return; S.nopeT = S.t;
+    if (S.t - (S.nopeT || -9) < 2.5) return; S.nopeT = S.t; SFX.nope();
     ring((a.position.x + b.position.x) / 2, (a.position.y + b.position.y) / 2, '#8a96ad', 6);
     const busy = [a, b].filter(x => x.plugin.used >= ATOMS[x.plugin.key].hands);
     if (!f && busy.length) {
@@ -492,6 +539,7 @@
     if (A.cl === B.cl || A.used >= ATOMS[A.key].hands || B.used >= ATOMS[B.key].hands) return;
     const f = addF(formula(A.cl), formula(B.cl));
     if (!fitsSome(f)) return;
+    SFX.bond();
     const c = Constraint.create({ bodyA: a, bodyB: b, length: ATOMS[A.key].r + ATOMS[B.key].r + 8, stiffness: 0.6, damping: 0.08 });
     Composite.add(engine.world, c);
     S.bonds.push({ a, b, c });
@@ -508,6 +556,7 @@
   }
 
   function completeMolecule(cl, key) {
+    SFX.molecule(INFO[key] ? INFO[key].a : 3);
     const members = S.clusters.get(cl);
     let x = 0, y = 0, vx = 0, vy = 0;
     members.forEach(m => { x += m.position.x; y += m.position.y; vx += m.velocity.x; vy += m.velocity.y; });
@@ -531,6 +580,7 @@
   }
 
   function doMerge(a, b) {
+    SFX.molecule(10);
     const key = a.plugin.key, to = MERGE[key];
     if (!to || a.plugin.dead || b.plugin.dead) return;
     const x = (a.position.x + b.position.x) / 2, y = (a.position.y + b.position.y) / 2;
@@ -544,6 +594,7 @@
   }
 
   function doStack(a, b) {
+    SFX.molecule(2);
     const key = a.plugin.key, na = a.plugin.n, nb = b.plugin.n, n = na + nb;
     if (a.plugin.dead || b.plugin.dead || n > MAXN) return;
     const x = (a.position.x + b.position.x) / 2, y = (a.position.y + b.position.y) / 2;
@@ -560,7 +611,7 @@
   function addB(key, x, y) {
     const n = BONUS[key]; if (!n) return;
     S.floats.forEach(f => { if (f.t < 0.5 && Math.abs(f.x - x) < 90 && Math.abs(f.y - y) < 20) y = f.y - 20; });
-    S.score += n; S.stats.bonus += n;
+    S.score += n; S.stats.bonus += n; SFX.bonus();
     S.floats.push({ x, y, t: 0, big: true, text: '+' + n + ' ' + MOLS[key].name.split(' (')[0].toLowerCase() + ' bonus!' }); hud();
   }
   function addE(n, x, y, why) {
@@ -662,11 +713,11 @@
         const members = S.clusters.get(O.cl) || [other];
         if (members.length) { removeAtoms(members); S.clusters.delete(O.cl); steam(x, y); event('Too hot!', 'The loose atoms shook apart and floated away. Heat breaks things that are not finished molecules yet.', ''); used = true; }
       }
-      if (used) flame(x, y);
+      if (used) { flame(x, y); SFX.fire(); }
     } else if (type === 'bolt') {
       if (O.kind === 'mol' && O.key === 'H2O') {
         other.plugin.dead = true; Composite.remove(engine.world, other);
-        spawnAround(['H2', 'O2'], x, y); zap(pw.position.x, pw.position.y, x, y);
+        spawnAround(['H2', 'O2'], x, y); zap(pw.position.x, pw.position.y, x, y); SFX.bolt();
         event('Split by electricity', 'Electricity pulls water apart into hydrogen gas and oxygen gas. (Real water needs 2 molecules to make one O₂.)', '2 H₂O → 2 H₂ + O₂'); used = true;
       }
     } else if (type === 'sun') {
@@ -678,14 +729,14 @@
           const mx = (x + partner.position.x) / 2, my = (y + partner.position.y) / 2;
           other.plugin.dead = partner.plugin.dead = true;
           Composite.remove(engine.world, other); Composite.remove(engine.world, partner);
-          spawnAround(['GLU', 'O2'], mx, my); sunbeam(mx, my);
+          spawnAround(['GLU', 'O2'], mx, my); sunbeam(mx, my); SFX.sun();
           event('Photosynthesis!', MOLS.GLU.fact, '6 CO₂ + 6 H₂O + light → C₆H₁₂O₆ + 6 O₂'); used = true; addE(48, mx, my - 30, 'sugar has 24 bonds'); built('GLU'); banner('GLU', 1); addB('GLU', mx, my - 52);
         } else { event('Sunlight needs a partner', 'To make sugar, the sunlight needs CO₂ AND water close together.', ''); }
       }
     } else if (type === 'press') {
       if (O.kind === 'mol' && O.key === 'CHA') {
         other.plugin.dead = true; Composite.remove(engine.world, other);
-        spawnAround(['DIA'], x, y); sparkle(x, y);
+        spawnAround(['DIA'], x, y); sparkle(x, y); SFX.press(); SFX.diamond();
         const m = MOLS.DIA; addB('DIA', x, y - 30); S.stats.diamond = true; banner('DIA', 1); event('DIAMOND!', m.fact, 'carbon + huge pressure → diamond'); used = true;
       }
     }
@@ -741,7 +792,7 @@
   }
   function discover(key) {
     if (found.has(key)) return;
-    found.add(key); fresh = key; selKey = key; store.set('found', [...found]);
+    found.add(key); fresh = key; selKey = key; SFX.discover(); store.set('found', [...found]);
     renderBook();
   }
   function renderBook() {
@@ -1019,7 +1070,7 @@
       S.overT = danger ? S.overT + dt : 0;
       if (S.overT > 2.5) gameOver();
       // power-ups fizzle after resting a while
-      Composite.allBodies(engine.world).forEach(b => { if (b.plugin && b.plugin.kind === 'power' && S.t - b.plugin.born > 5) { b.plugin.dead = true; Composite.remove(engine.world, b); ring(b.position.x, b.position.y, '#888', 8); } });
+      Composite.allBodies(engine.world).forEach(b => { if (b.plugin && b.plugin.kind === 'power' && S.t - b.plugin.born > 5) { b.plugin.dead = true; Composite.remove(engine.world, b); ring(b.position.x, b.position.y, '#888', 8); SFX.fizzle(); } });
     }
     for (const p of S.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96; p.life -= dt; }
     S.particles = S.particles.filter(p => p.life > 0);
@@ -1033,7 +1084,7 @@
   }
 
   function gameOver() {
-    S.over = true; hud(); store.set('games', store.get('games', 0) + 1);
+    SFX.over(); S.over = true; hud(); store.set('games', store.get('games', 0) + 1);
     $('overTitle').textContent = 'Jar full!';
     const st = S.stats, rec = store.get('rec', {}), nf = v => v.toLocaleString('en-US');
     const heavy = st.heavy ? INFO[st.heavy] : null, big = st.big ? INFO[st.big] : null;
@@ -1063,7 +1114,7 @@
   function drop() {
     if (S.over || S.paused || S.cool > 0) return;
     const b = makeBody(S.cur, clampAim(S.aim), DROPY);
-    S.lastDrop = b; S.drops++;
+    S.lastDrop = b; S.drops++; SFX.drop();
     S.cur = S.next; S.next = pick(1); S.cool = 0.45;
     if (S.next.kind === 'power' || S.cur.kind === 'power') S.hintSoon = 0.4;
     if (S.drops % 40 === 0 && S.shakes < 3) { S.shakes++; shakeBtn(); S.floats.push({ x: W / 2, y: TOPLINE + 30, t: 0, big: true, text: '+1 shake!' }); }
@@ -1085,13 +1136,19 @@
   const setHintBtn = () => { $('hintBtn').textContent = 'Hints: ' + (hintsOn ? 'on' : 'off'); };
   $('hintBtn').addEventListener('click', () => { hintsOn = !hintsOn; store.set('hints', hintsOn); setHintBtn(); if (!hintsOn && S.banner && S.banner.type === 'hint') S.banner = null; });
   setHintBtn();
+  soundOn = store.get('sound', true);
+  const setSoundBtn = () => { $('soundBtn').textContent = soundOn ? '🔊 Sound' : '🔇 Muted'; };
+  $('soundBtn').addEventListener('click', () => { soundOn = !soundOn; store.set('sound', soundOn); setSoundBtn(); if (soundOn) { SFX.unlock(); SFX.bond(); } });
+  setSoundBtn();
+  window.addEventListener('pointerdown', () => SFX.unlock(), { passive: true });
+  window.addEventListener('keydown', () => SFX.unlock());
   window.addEventListener('resize', resize);
 
   window.__aj = { over: () => gameOver(), state: () => S, found: () => [...found], spawn: (kind, key, x, y) => makeBody({ kind, key }, x, y), world: () => Composite.allBodies(engine.world).filter(b => b.plugin && b.plugin.kind).map(b => b.plugin.key) };
   resize(); newGame(); renderBook(); requestAnimationFrame(frame);
 })();
 </script>
-<div style="position:fixed;right:8px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font:600 11px/1 ui-monospace,Menlo,monospace;color:#9fb0cc;opacity:.55;pointer-events:none;z-index:50">v2</div>
+<div style="position:fixed;right:8px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font:600 11px/1 ui-monospace,Menlo,monospace;color:#9fb0cc;opacity:.55;pointer-events:none;z-index:50">v3</div>
 
 </body>
 </html>

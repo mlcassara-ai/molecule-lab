@@ -71,13 +71,24 @@
   .entry.locked { opacity: .45; }
   .entry.locked i { background: #3a4660 !important; }
   .entry.new { outline: 2px solid var(--gold); }
+  .entry { cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; font: inherit; color: inherit; border: 0; }
+  .entry.locked { opacity: .6; }
+  .entry.locked::after { content: '💡'; position: absolute; top: 4px; right: 6px; font-size: 12px; }
+  .entry.sel { outline: 2px solid var(--mint); opacity: 1; }
+  .binfo { background: var(--panel-2); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; min-height: 64px; }
+  .binfo .bt { font-family: var(--display); font-weight: 800; font-size: 17px; line-height: 1.15; }
+  .binfo .clue { color: #fff4c2; }
+  .binfo .rec { font-family: var(--mono); font-size: 13px; color: var(--gold); }
+  .binfo .fct { color: var(--muted); font-size: 13px; }
+  .binfo .lvl { font-size: 12px; color: var(--muted); }
+  .binfo button { justify-self: start; font-size: 13px; padding: 5px 10px 3px; }
   .howto { font-size: 13.5px; color: var(--text); display: grid; gap: 4px; }
   .howto div { display: flex; gap: 8px; }
   .howto em { font-style: normal; font-weight: 700; color: var(--gold); min-width: 64px; }
   .progress { height: 8px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
   .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--mint), var(--gold)); }
 </style>
-<a href="index.html" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
+<a href="index.html?v=2" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
 
 
 <div class="wrap">
@@ -136,6 +147,7 @@
       <div class="card">
         <h2>Discovery book</h2>
         <div class="progress"><i id="prog"></i></div>
+        <div class="binfo" id="binfo" aria-live="polite"></div>
         <div class="book" id="book"></div>
       </div>
     </div>
@@ -609,14 +621,18 @@
     const top = Composite.allBodies(engine.world).reduce((m, b) => b.plugin && b.plugin.kind && !b.plugin.rising && S.t - b.plugin.born > 1.5 ? Math.min(m, b.position.y - (b.circleRadius || 10)) : m, H);
     if (top < TOPLINE + 120) return S.shakes > 0 && Math.random() < 0.5 ? 'The jar is filling up! Try a Shake to help loose atoms finish their molecules.' : 'The jar is filling up! Make H₂, O₂ or N₂ gas. It floats away and makes room.';
     const opts = [];
-    if (countOf('C2H4') >= 2) opts.push('Get two green ethylenes to touch to start a wax chain!');
-    if (countOf('WAX') >= 2) opts.push('Two waxes touching make plastic!');
-    if (countOf('GLU') >= 2) opts.push('Two sugars touching link into starch!');
-    if (countOf('STA') >= 2) opts.push('Two starches touching make wood!');
-    if (has('CHA')) opts.push('You have charcoal! A press power-up can squeeze it into a diamond.');
-    if (has('CO2') && has('H2O') && !found.has('GLU')) opts.push('CO₂ + water + a sunlight power-up = sugar. Watch for the sun!');
+    const q = (key, ask, tell) => opts.push(found.has(key) ? tell : ask);
+    if (has('CO2') && has('H2O')) q('GLU', 'You have CO₂ and water. What would a plant do with those and some sunshine?', 'CO₂ + water + a ☀️ = sugar. Watch for the sun!');
+    if (has('CHA')) q('DIA', 'You made charcoal! What happens if you squeeze carbon REALLY hard?', 'Charcoal + a press = diamond!');
+    if (has('GLU') || has('STA') || has('WOO')) q('CHA', 'What do you think happens if sugar or wood gets way too hot?', 'Fire on sugar, starch or wood makes charcoal.');
+    if (has('H2O') && !has('H2')) q('H2', 'Could lightning pull a water apart? What would be left?', 'Lightning splits water into hydrogen and oxygen gas.');
+    if (countOf('C2H4') >= 2) q('WAX', 'Two green ethylenes… what if they held hands?', 'Two ethylenes touching start a wax chain!');
+    if (countOf('WAX') >= 2) q('PLA', 'What if two waxes joined into an even longer chain?', 'Two waxes touching make plastic!');
+    if (countOf('GLU') >= 2) q('STA', 'Two sugars in the jar… what if they linked up?', 'Two sugars touching make starch!');
+    if (countOf('STA') >= 2) q('WOO', 'Trees are made of super-long sugar chains. Can you make one?', 'Two starches touching make wood!');
+    if (has('CH4')) q('CO2', 'Methane is stove gas. What happens when gas burns?', 'Fire on methane makes CO₂ and water.');
     if (S.cur && S.cur.kind === 'atom' && S.cur.key === 'H') opts.push('Drop the H on an atom that still has a free hand (a little stick).');
-    if (opts.length && Math.random() < 0.7) return opts[Math.floor(Math.random() * opts.length)];
+    if (opts.length && Math.random() < 0.8) return opts[Math.floor(Math.random() * opts.length)];
     const t = TIPS[S.hintIx % TIPS.length]; S.hintIx++; return t;
   }
 
@@ -679,21 +695,65 @@
 
   // ---------------- discovery + UI ----------------
   const BOOK = ['H', 'O', 'C', 'N', 'H2', 'O2', 'N2', 'H2O', 'CO2', 'CH4', 'NH3', 'C2H4', 'GLU', 'STA', 'WOO', 'WAX', 'PLA', 'CHA', 'DIA', 'WCL'];
-  let fresh = null;
+  let fresh = null, selKey = null;
+  // riddles for locked entries: vague first, more direct the more games you play without finding it
+  const CLUES = {
+    H2: ['The lightest stuff there is. Two of the same tiny atom.', 'Two white hydrogens holding hands.', 'Drop an H right onto another lone H.'],
+    O2: ['The gas you breathe in.', 'Two of the red atoms holding on.', 'Drop an O right onto another lone O.'],
+    N2: ['Most of the air around you is me.', 'Two of the blue atoms holding on.', 'Drop an N right onto another lone N.'],
+    H2O: ['You drink me every day.', 'One red atom holding two white ones.', 'Get two H\u2019s to stick onto one O.'],
+    CO2: ['The gas you breathe out.', 'One black atom holding two red ones.', 'Give a C two O\u2019s.'],
+    CH4: ['Gas for the stove. Cows burp me!', 'One black atom with all 4 hands holding white ones.', 'Get four H\u2019s onto one C.'],
+    NH3: ['Plant food and window cleaner.', 'One blue atom holding white ones.', 'Get three H\u2019s onto one N.'],
+    C2H4: ['Bananas give me off to ripen, and I\u2019m the start of plastic.', 'Two black atoms holding each other, plus white ones.', 'Stick a C to a C first, then add four H\u2019s.'],
+    GLU: ['Plants make me from the gas you breathe out, plus water and sunshine.', 'Needs a CO\u2082 and a water close together, plus a \u2600\ufe0f power-up.', 'Drop the \u2600\ufe0f right between a gray CO\u2082 and a blue water.'],
+    STA: ['Bread and potatoes are full of me. I\u2019m a chain of something sweet.', 'Two of the same sweet molecule joined together.', 'Get two sugars (orange) to touch.'],
+    WOO: ['Trees, paper and cotton are made of me.', 'An even longer sweet chain.', 'Get two starches to touch.'],
+    WAX: ['Candles are made of me. I\u2019m a chain of the banana-ripening gas.', 'Two ethylenes joined together.', 'Get two green C\u2082H\u2084 to touch.'],
+    PLA: ['Milk jugs and bags. A chain of a chain!', 'Two of the candle stuff joined together.', 'Get two waxes to touch.'],
+    CHA: ['What is left when sugar or wood gets WAY too hot?', 'Burn something sweet, or wood.', 'Drop the \ud83d\udd25 fire right on a sugar, starch or wood.'],
+    DIA: ['Squeeze me hard enough and I become the hardest stuff on Earth.', 'Start with black charcoal, then squeeze it.', 'Drop the press power-up right on a charcoal.'],
+    WCL: ['Water likes to stick to water.', 'Keep stacking waters together into one clump.', 'Get 16 waters into one clump.']
+  };
+  const RECIPE = {
+    H: 'An atom with 1 hand', O: 'An atom with 2 hands', C: 'An atom with 4 hands', N: 'An atom with 3 hands',
+    H2: 'H + H \u2192 H\u2082', O2: 'O + O \u2192 O\u2082 (a double bond)', N2: 'N + N \u2192 N\u2082 (a triple bond)',
+    H2O: 'O + 2 H \u2192 H\u2082O', CO2: 'C + 2 O \u2192 CO\u2082 (two double bonds)', CH4: 'C + 4 H \u2192 CH\u2084', NH3: 'N + 3 H \u2192 NH\u2083',
+    C2H4: 'C + C + 4 H \u2192 C\u2082H\u2084', GLU: 'CO\u2082 + water + \u2600\ufe0f sunlight \u2192 sugar + O\u2082',
+    STA: 'sugar + sugar \u2192 starch', WOO: 'starch + starch \u2192 wood', WAX: 'ethylene + ethylene \u2192 wax', PLA: 'wax + wax \u2192 plastic',
+    CHA: 'sugar, starch or wood + \ud83d\udd25 heat \u2192 charcoal', DIA: 'charcoal + huge squeeze \u2192 diamond', WCL: '16 waters holding on \u2192 a water clump'
+  };
+  const clueLevel = () => { const g = store.get('games', 0); return g < 2 ? 0 : g < 4 ? 1 : 2; };
+  let extraClue = {};
+  function renderInfo() {
+    const box = $('binfo'); if (!box) return;
+    if (!selKey) { box.innerHTML = '<div class="bt">Tap a 💡 to get a clue</div><div class="fct">Each ??? is something you can make. The clues get easier the more games you play.</div>'; return; }
+    const it = ATOMS[selKey] || MOLS[selKey];
+    if (found.has(selKey)) {
+      box.innerHTML = `<div class="bt">${it.name}${it.f && it.f !== 'C' ? ' · ' + it.f : ''}</div><div class="rec">${RECIPE[selKey] || ''}</div>${MOLS[selKey] ? `<div class="fct">${MOLS[selKey].fact}</div>` : ''}`;
+    } else {
+      const c = CLUES[selKey] || ['Keep exploring!'];
+      const lv = Math.min(c.length - 1, Math.max(clueLevel(), extraClue[selKey] || 0));
+      box.innerHTML = `<div class="bt">??? mystery</div>${c.slice(0, lv + 1).map(t => `<div class="clue">💡 ${t}</div>`).join('')}` +
+        (lv < c.length - 1 ? `<button class="ghost" id="moreClue">Still stuck? Another clue</button>` : '');
+      const mb = $('moreClue'); if (mb) mb.onclick = () => { extraClue[selKey] = lv + 1; renderInfo(); };
+    }
+  }
   function discover(key) {
     if (found.has(key)) return;
-    found.add(key); fresh = key; store.set('found', [...found]);
+    found.add(key); fresh = key; selKey = key; store.set('found', [...found]);
     renderBook();
   }
   function renderBook() {
     const book = $('book'); book.innerHTML = '';
     BOOK.forEach(key => {
       const it = ATOMS[key] || MOLS[key], got = found.has(key);
-      const d = document.createElement('div'); d.className = 'entry' + (got ? '' : ' locked') + (key === fresh ? ' new' : '');
+      const d = document.createElement('button'); d.type = 'button'; d.className = 'entry' + (got ? '' : ' locked') + (key === fresh ? ' new' : '') + (key === selKey ? ' sel' : '');
+      d.onclick = () => { selKey = key; renderBook(); };
       d.innerHTML = `<i style="background:${it.col}"></i><b>${got ? it.name : '???'}</b><span>${got ? (it.f || key) : ''}</span>`;
-      if (got && MOLS[key]) d.title = MOLS[key].fact;
       book.appendChild(d);
     });
+    renderInfo();
     $('found').textContent = `${found.size}/${BOOK.length}`;
     $('prog').style.width = (found.size / BOOK.length * 100) + '%';
   }
@@ -973,7 +1033,7 @@
   }
 
   function gameOver() {
-    S.over = true; hud();
+    S.over = true; hud(); store.set('games', store.get('games', 0) + 1);
     $('overTitle').textContent = 'Jar full!';
     const st = S.stats, rec = store.get('rec', {}), nf = v => v.toLocaleString('en-US');
     const heavy = st.heavy ? INFO[st.heavy] : null, big = st.big ? INFO[st.big] : null;
@@ -989,7 +1049,7 @@
       <span><b>Heaviest</b><i>${heavy ? nm(st.heavy) + ', ' + (heavy.approx ? 'about ' : '') + nf(heavy.w) + ' × a hydrogen' + star(newW) : '—'}</i></span>
       <span><b>Biggest</b><i>${big ? nm(st.big) + ', ' + (big.approx ? 'about ' : '') + nf(big.a) + ' atoms' + star(newA) : '—'}</i></span>
       <span><b>Diamond</b><i>${st.diamond ? '✓ yes!' : 'not this time'}</i></span>
-    </span>Discovery book: ${found.size} of ${BOOK.length} found.`;
+    </span>Discovery book: ${found.size} of ${BOOK.length} found.${found.size < BOOK.length ? '<br>Tap a 💡 in the Discovery book for a clue.' : ''}`;
     $('over').hidden = false;
   }
 
@@ -1019,7 +1079,7 @@
     else if (e.key === 's' || e.key === 'S') { shake(); }
   });
   $('shakeBtn').addEventListener('click', shake);
-  $('newBtn').addEventListener('click', () => { Engine.clear(engine); newGame(); });
+  $('newBtn').addEventListener('click', () => { if (S.drops > 15 && !S.over) store.set('games', store.get('games', 0) + 1); Engine.clear(engine); newGame(); });
   $('againBtn').addEventListener('click', () => { Engine.clear(engine); newGame(); });
   $('pauseBtn').addEventListener('click', () => { if (S.over) return; S.paused = !S.paused; $('pauseBtn').textContent = S.paused ? 'Resume' : 'Pause'; });
   const setHintBtn = () => { $('hintBtn').textContent = 'Hints: ' + (hintsOn ? 'on' : 'off'); };
@@ -1031,6 +1091,7 @@
   resize(); newGame(); renderBook(); requestAnimationFrame(frame);
 })();
 </script>
+<div style="position:fixed;right:8px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font:600 11px/1 ui-monospace,Menlo,monospace;color:#9fb0cc;opacity:.55;pointer-events:none;z-index:50">v2</div>
 
 </body>
 </html>

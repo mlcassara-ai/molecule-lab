@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Molecule Lab">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+</head>
+<body>
+<title>Atom Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito+Sans:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root {
+    --ink: #0e1420; --panel: #172133; --panel-2: #22304a; --line: #33456a;
+    --text: #eef3fb; --muted: #a6b5cf; --gold: #ffd43b; --mint: #7ee081; --coral: #ff7a6b;
+    --proton: #ef4b43; --neutron: #9aa7bb; --electron: #4fd8ff;
+    --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--ink); color: var(--text); -webkit-text-size-adjust: 100%; margin: 0; }
+  body { font-family: var(--body); font-size: 15px; line-height: 1.45; -webkit-tap-highlight-color: transparent; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 14px 32px; display: grid; gap: 14px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(30px, 6vw, 44px); line-height: 1; margin: 0; letter-spacing: -0.5px; }
+  h1 span { color: var(--electron); }
+  .tag { color: var(--muted); font-size: 14px; max-width: 54ch; }
+  @media (max-width: 600px) { .tag { display: none; } }
+  .main { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .main { grid-template-columns: 1fr; } }
+  .left { display: grid; gap: 10px; justify-items: center; }
+  canvas#atom { display: block; width: 100%; max-width: 460px; border-radius: 18px; background: radial-gradient(circle at 50% 45%, #16223a, #0c1322 70%); touch-action: manipulation; }
+  .controls { width: 100%; max-width: 460px; display: grid; gap: 8px; }
+  .row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+  .row .nm { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14.5px; }
+  .row .dot { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset -3px -3px 0 rgba(0,0,0,.3); }
+  .row .ct { font-family: var(--mono); font-size: 20px; min-width: 2.2em; text-align: center; }
+  button { font-family: var(--display); font-weight: 600; font-size: 16px; border: 0; border-radius: 10px; padding: 8px 14px 6px; cursor: pointer; color: var(--ink); background: var(--gold); user-select: none; touch-action: manipulation; }
+  button.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--line); }
+  button.pm { background: var(--panel-2); color: var(--text); font-size: 22px; min-width: 46px; padding: 6px 10px 8px; }
+  button.pm:active { background: var(--line); }
+  button.pm.atcap { opacity: .5; box-shadow: inset 0 0 0 1.5px var(--gold); }
+  button:disabled { opacity: .35; cursor: default; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .side { display: grid; gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+  .card h2 { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin: 0; font-weight: 600; }
+  .elhead { display: flex; align-items: center; gap: 14px; }
+  .sym { font-family: var(--display); font-weight: 800; font-size: 44px; line-height: 1; background: var(--panel-2); border-radius: 12px; padding: 10px 14px 6px; min-width: 86px; text-align: center; }
+  .elname { font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1.1; }
+  .elsub { color: var(--muted); font-size: 13.5px; }
+  .facts { display: grid; gap: 3px; font-size: 14px; }
+  .facts > div { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 3px; }
+  .facts b { color: var(--muted); font-weight: 700; }
+  .facts i { font-style: normal; font-family: var(--mono); text-align: right; }
+  .note { font-size: 13.5px; color: var(--text); }
+  .note.warn { color: var(--gold); }
+  .shells { font-family: var(--mono); font-size: 14px; color: var(--electron); }
+  .chall { display: grid; gap: 5px; font-size: 13.5px; }
+  .chall div { display: flex; gap: 8px; align-items: baseline; }
+  .chall .mark { width: 16px; }
+  .chall .done { color: var(--muted); text-decoration: line-through; }
+  .chall .now { color: var(--gold); font-weight: 700; }
+  .book { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 4px; }
+  .el { background: var(--panel-2); border-radius: 8px; padding: 4px 2px 3px; text-align: center; font-size: 11px; line-height: 1.15; opacity: .4; }
+  .el b { display: block; font-family: var(--display); font-size: 15px; }
+  .el small { font-family: var(--mono); font-size: 9.5px; color: var(--muted); }
+  .el.got { opacity: 1; background: #2b3f63; }
+  .el.lock { opacity: .18; }
+  .el.cur { outline: 2px solid var(--gold); opacity: 1; }
+  .lvl { font-size: 12.5px; color: var(--muted); }
+  .pill { display: inline-block; font-family: var(--mono); font-size: 12px; padding: 2px 8px 1px; border-radius: 999px; background: var(--panel-2); }
+  .pill.bad { background: #5a2020; color: #ffd0c8; }
+  .pill.good { background: #204a2a; color: #cdf5d6; }
+</style>
+<a href="index.html?v=5" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
+
+
+<div class="wrap">
+  <header>
+    <h1>Atom <span>Builder</span></h1>
+    <div class="tag">Add protons, neutrons and electrons and see what you built. Protons decide which element it is, neutrons decide how heavy, electrons decide the charge.</div>
+  </header>
+
+  <div class="main">
+    <div class="left">
+      <canvas id="atom" aria-label="The atom you are building"></canvas>
+      <div class="controls">
+        <div class="row">
+          <div class="nm"><span class="dot" style="background:var(--proton)"></span>Protons</div>
+          <button class="pm" id="pMinus" aria-label="remove a proton">−</button>
+          <div class="ct" id="pCt">0</div>
+          <button class="pm" id="pPlus" aria-label="add a proton">+</button>
+        </div>
+        <div class="row">
+          <div class="nm"><span class="dot" style="background:var(--neutron)"></span>Neutrons</div>
+          <button class="pm" id="nMinus" aria-label="remove a neutron">−</button>
+          <div class="ct" id="nCt">0</div>
+          <button class="pm" id="nPlus" aria-label="add a neutron">+</button>
+        </div>
+        <div class="row">
+          <div class="nm"><span class="dot" style="background:var(--electron)"></span>Electrons</div>
+          <button class="pm" id="eMinus" aria-label="remove an electron">−</button>
+          <div class="ct" id="eCt">0</div>
+          <button class="pm" id="ePlus" aria-label="add an electron">+</button>
+        </div>
+        <div class="btns">
+          <button class="ghost" id="neutralBtn">Make it neutral</button>
+          <button class="ghost" id="commonBtn">Most common form</button>
+          <button class="ghost" id="clearBtn">Clear</button>
+          <button id="decayBtn" hidden>☢️ Watch it decay</button>
+        </div>
+        <div class="btns" id="presets"></div>
+        <div class="btns">
+          <button class="ghost" id="soundBtn">🔊 Sound</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <div class="elhead">
+          <div class="sym" id="sym">?</div>
+          <div><div class="elname" id="elname">Nothing yet</div><div class="elsub" id="elsub">Add a proton to start.</div></div>
+        </div>
+        <div class="facts">
+          <div><b>Protons (atomic number)</b><i id="fZ">0</i></div>
+          <div><b>Neutrons</b><i id="fN">0</i></div>
+          <div><b>Electrons</b><i id="fE">0</i></div>
+          <div><b>Mass number (p + n)</b><i id="fA">0</i></div>
+          <div><b>Charge</b><i id="fQ">0</i></div>
+          <div><b>Shells</b><i id="fS" class="shells">—</i></div>
+        </div>
+        <div class="note" id="note">Tap + under Protons.</div>
+      </div>
+
+      <div class="card">
+        <h2>What just happened</h2>
+        <div class="note" id="ev">Every atom is protons and neutrons in the middle, with electrons whizzing around the outside.</div>
+      </div>
+
+      <div class="card">
+        <h2>Challenges <span class="pill" id="lvlPill">Level 1</span></h2>
+        <div class="chall" id="chall"></div>
+        <div class="lvl" id="lvlNote"></div>
+      </div>
+
+      <div class="card">
+        <h2>Elements found <span class="pill" id="foundPill">0</span></h2>
+        <div class="book" id="book"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  // ---------------- element data ----------------
+  const RAW = 'H Hydrogen,He Helium,Li Lithium,Be Beryllium,B Boron,C Carbon,N Nitrogen,O Oxygen,F Fluorine,Ne Neon,Na Sodium,Mg Magnesium,Al Aluminum,Si Silicon,P Phosphorus,S Sulfur,Cl Chlorine,Ar Argon,K Potassium,Ca Calcium,Sc Scandium,Ti Titanium,V Vanadium,Cr Chromium,Mn Manganese,Fe Iron,Co Cobalt,Ni Nickel,Cu Copper,Zn Zinc,Ga Gallium,Ge Germanium,As Arsenic,Se Selenium,Br Bromine,Kr Krypton,Rb Rubidium,Sr Strontium,Y Yttrium,Zr Zirconium,Nb Niobium,Mo Molybdenum,Tc Technetium,Ru Ruthenium,Rh Rhodium,Pd Palladium,Ag Silver,Cd Cadmium,In Indium,Sn Tin,Sb Antimony,Te Tellurium,I Iodine,Xe Xenon,Cs Cesium,Ba Barium,La Lanthanum,Ce Cerium,Pr Praseodymium,Nd Neodymium,Pm Promethium,Sm Samarium,Eu Europium,Gd Gadolinium,Tb Terbium,Dy Dysprosium,Ho Holmium,Er Erbium,Tm Thulium,Yb Ytterbium,Lu Lutetium,Hf Hafnium,Ta Tantalum,W Tungsten,Re Rhenium,Os Osmium,Ir Iridium,Pt Platinum,Au Gold,Hg Mercury,Tl Thallium,Pb Lead,Bi Bismuth,Po Polonium,At Astatine,Rn Radon,Fr Francium,Ra Radium,Ac Actinium,Th Thorium,Pa Protactinium,U Uranium,Np Neptunium,Pu Plutonium,Am Americium,Cm Curium,Bk Berkelium,Cf Californium,Es Einsteinium,Fm Fermium,Md Mendelevium,No Nobelium,Lr Lawrencium,Rf Rutherfordium,Db Dubnium,Sg Seaborgium,Bh Bohrium,Hs Hassium,Mt Meitnerium,Ds Darmstadtium,Rg Roentgenium,Cn Copernicium,Nh Nihonium,Fl Flerovium,Mc Moscovium,Lv Livermorium,Ts Tennessine,Og Oganesson';
+  const EL = RAW.split(',').map(s => { const i = s.indexOf(' '); return { sym: s.slice(0, i), name: s.slice(i + 1) }; });
+  const MAXZ = EL.length;
+  // mass number of the most common (or longest lived) isotope
+  const COMMON = [1,4,7,9,11,12,14,16,19,20,23,24,27,28,31,32,35,40,39,40,45,48,51,52,55,56,59,58,63,64,69,74,75,80,79,84,85,88,89,90,93,98,98,102,103,106,107,114,115,120,121,130,127,132,133,138,139,140,141,142,145,152,153,158,159,164,165,166,169,174,175,180,181,184,187,192,193,195,197,202,205,208,209,209,210,222,223,226,227,232,231,238,237,244,243,247,247,251,252,257,258,259,266,267,268,269,270,269,278,281,282,285,286,289,290,293,294,294];
+  // standard atomic weight, the number on a periodic table (first 36)
+  const WT = [1.008,4.003,6.94,9.012,10.81,12.011,14.007,15.999,18.998,20.180,22.990,24.305,26.982,28.085,30.974,32.06,35.45,39.95,39.098,40.078,44.956,47.867,50.942,51.996,54.938,55.845,58.933,58.693,63.546,65.38,69.723,72.630,74.922,78.971,79.904,83.798];
+  // the isotopes that are actually stable, for the elements the kids know best
+  const STABLE = { 1:[0,1], 2:[1,2], 3:[3,4], 4:[5], 5:[5,6], 6:[6,7], 7:[7,8], 8:[8,9,10], 9:[10], 10:[10,11,12], 11:[12], 12:[12,13,14], 13:[14], 14:[14,15,16], 15:[16], 16:[16,17,18,20], 17:[18,20], 18:[18,20,22], 19:[20,22], 20:[20,22,23,24,26] };
+  const FAMOUS = {
+    '1-1': 'Ordinary hydrogen: one lonely proton, no neutron at all.',
+    '1-2': 'Deuterium, "heavy hydrogen". Heavy water is made with it.',
+    '1-3': 'Tritium. It glows in watch dials and slowly falls apart.',
+    '2-4': 'Helium-4, the stuff in balloons. Also what an alpha particle is!',
+    '6-12': 'Carbon-12. Every carbon weight on the periodic table is measured against this one.',
+    '6-14': 'Carbon-14! Scientists use it to figure out how old fossils and mummies are.',
+    '8-16': 'The oxygen you are breathing right now.',
+    '19-40': 'Potassium-40 is radioactive, and bananas are full of potassium. Bananas are very slightly radioactive!',
+    '26-56': 'Iron-56 is the most tightly packed nucleus there is. Stars stop making energy when they reach iron.',
+    '27-60': 'Cobalt-60 is used in hospitals to treat cancer.',
+    '38-90': 'Strontium-90 is a leftover from nuclear accidents. Bodies mistake it for calcium.',
+    '53-131': 'Iodine-131 is used to treat thyroid problems.',
+    '55-137': 'Cesium-137 is the main leftover from Chernobyl.',
+    '79-197': 'Gold! Every gold atom on Earth was made in an exploding star or a crash of two neutron stars.',
+    '92-235': 'Uranium-235 is the isotope used in nuclear power plants.',
+    '92-238': 'Uranium-238 is the common kind. It takes 4.5 billion years for half of it to decay.',
+    '94-239': 'Plutonium-239, made in reactors, used in bombs and space probe batteries.',
+    '95-241': 'Americium-241 sits inside most smoke detectors.'
+  };
+  const USES = {
+    1: 'Lightest element in the universe. Stars are mostly hydrogen.',
+    2: 'Makes balloons float and never freezes solid at normal pressure.',
+    3: 'Lithium runs the battery in your phone.',
+    6: 'Carbon is the backbone of every living thing.',
+    7: 'Nitrogen is 78% of the air you breathe.',
+    8: 'Oxygen is what your lungs are after.',
+    10: 'Neon glows orange-red in signs.',
+    11: 'Sodium plus chlorine is table salt.',
+    13: 'Aluminum foil, cans and airplanes.',
+    14: 'Silicon is what computer chips are made of.',
+    17: 'Chlorine keeps swimming pools clean.',
+    18: 'Argon fills light bulbs so the filament does not burn up.',
+    19: 'Potassium keeps your muscles and heart working.',
+    20: 'Calcium builds your bones and teeth.',
+    26: 'Iron makes steel, and it carries oxygen in your blood.',
+    29: 'Copper carries electricity in the wires in your walls.',
+    30: 'Zinc coats nails and screws so they do not rust.',
+    47: 'Silver is the best conductor of electricity there is.',
+    79: 'Gold never tarnishes, which is why treasure still shines.',
+    80: 'Mercury is the only metal that is liquid at room temperature.',
+    82: 'Lead is heavy and blocks X-rays.',
+    92: 'Uranium powers nuclear plants and submarines.'
+  };
+
+  // ---------------- electron shells (fill order, then count per shell) ----------------
+  const SUB = [[1,'s',2],[2,'s',2],[2,'p',6],[3,'s',2],[3,'p',6],[4,'s',2],[3,'d',10],[4,'p',6],[5,'s',2],[4,'d',10],[5,'p',6],[6,'s',2],[4,'f',14],[5,'d',10],[6,'p',6],[7,'s',2],[5,'f',14],[6,'d',10],[7,'p',6]];
+  function shellsFor(e) {
+    const out = []; let left = e;
+    for (const [n, , cap] of SUB) { if (left <= 0) break; const put = Math.min(cap, left); left -= put; out[n - 1] = (out[n - 1] || 0) + put; }
+    for (let i = 0; i < out.length; i++) if (!out[i]) out[i] = 0;
+    while (out.length && out[out.length - 1] === 0) out.pop();
+    return out;
+  }
+  const SHELL_CAP = [2, 8, 18, 32, 32, 18, 8];
+
+  // ---------------- state ----------------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('atombuilder_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('atombuilder_' + k, JSON.stringify(v)); } catch (e) {} }
+  };
+  let P = 0, N = 0, E = 0;
+  let found = new Set(store.get('found', []));
+  let level = store.get('level', 1);                 // 1 = elements 1-20, 2 = 1-36, 3 = everything
+  let doneCh = new Set(store.get('challenges', []));
+  let soundOn = store.get('sound', true);
+  const limitZ = () => level >= 3 ? MAXZ : level === 2 ? 36 : 20;
+
+  // ---------------- sound ----------------
+  const SFX = (() => {
+    let ac = null, master = null; const last = {};
+    function ctx() {
+      if (!ac) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ac = new A(); master = ac.createGain(); master.gain.value = 0.5; master.connect(ac.destination); }
+      if (ac.state === 'suspended') ac.resume();
+      return ac;
+    }
+    function ok(nm, gap) { if (!soundOn || !ctx()) return false; const t = ac.currentTime; if (last[nm] && t - last[nm] < (gap || 0.04)) return false; last[nm] = t; return true; }
+    function tone(f, dur, type, vol, at, to) {
+      const t0 = ac.currentTime + (at || 0), o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || 'sine'; o.frequency.setValueAtTime(f, t0); if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    let nb = null;
+    function noise(dur, vol, ftype, freq, at, to) {
+      if (!nb) { nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+      const t0 = ac.currentTime + (at || 0), s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      s.buffer = nb; s.loop = true; f.type = ftype || 'bandpass'; f.frequency.setValueAtTime(freq || 1200, t0); if (to) f.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      s.connect(f); f.connect(g); g.connect(master); s.start(t0); s.stop(t0 + dur + 0.05);
+    }
+    return {
+      unlock() { if (soundOn) ctx(); },
+      proton(up) { if (ok('p')) tone(up ? 330 : 260, 0.09, 'square', 0.08, 0, up ? 420 : 200); },
+      neutron(up) { if (ok('n')) tone(up ? 240 : 190, 0.1, 'sine', 0.09, 0, up ? 300 : 150); },
+      electron(up) { if (ok('e')) tone(up ? 900 : 700, 0.07, 'triangle', 0.07, 0, up ? 1300 : 500); },
+      element() { if (!ok('el', 0.25)) return; [659, 880, 1319].forEach((f, i) => tone(f, 0.3, 'triangle', 0.09, i * 0.07)); },
+      newEl() { if (!ok('new', 0.4)) return; [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.35, 'triangle', 0.1, i * 0.09)); tone(1568, 0.6, 'sine', 0.06, 0.4); },
+      win() { if (!ok('win', 0.5)) return; [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.4, 'square', 0.06, i * 0.1)); },
+      decay() { if (!ok('dec', 0.3)) return; noise(0.7, 0.2, 'bandpass', 2500, 0, 400); tone(200, 0.5, 'sawtooth', 0.09, 0, 60); },
+      bad() { if (ok('bad', 0.3)) tone(180, 0.18, 'sine', 0.1, 0, 120); }
+    };
+  })();
+
+  // ---------------- stability ----------------
+  function idealN(z) { return Math.max(0, (COMMON[z - 1] || Math.round(z * 2.4)) - z); }
+  function isStable(z, n) {
+    if (z < 1) return true;
+    if (z === 43 || z === 61 || z > 82) return false;     // technetium, promethium, and everything past lead
+    if (STABLE[z]) return STABLE[z].indexOf(n) >= 0;
+    const tol = z <= 40 ? 2 : 3;
+    return Math.abs(n - idealN(z)) <= tol;
+  }
+  function decayKind(z, n) {
+    if (z > 82 && n > 100) return 'alpha';
+    if (z > 82) return 'alpha';
+    if (n > idealN(z)) return 'beta';
+    return 'beta+';
+  }
+
+  // ---------------- canvas ----------------
+  const cv = $('atom'); let ctx = cv.getContext('2d');
+  let W = 440, H = 440, k = 1, dpr = 1, t = 0;
+  function resize() {
+    const r = cv.parentElement.getBoundingClientRect();
+    const w = Math.min(460, r.width || 440, Math.max(240, window.innerHeight - 380));
+    k = w / 440; W = 440; H = 440;
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(w * dpr); cv.height = Math.round(w * dpr);
+    cv.style.width = w + 'px'; cv.style.height = w + 'px';
+    ctx.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
+  }
+  function ball(x, y, r, col, ring) {
+    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+    g.addColorStop(0, lighten(col, 0.45)); g.addColorStop(1, col);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    if (ring) { ctx.strokeStyle = ring; ctx.lineWidth = 1.5; ctx.stroke(); }
+  }
+  function lighten(hex, amt) {
+    const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    const f = v => Math.max(0, Math.min(255, Math.round(v + (255 - v) * amt)));
+    return `rgb(${f(r)},${f(g)},${f(b)})`;
+  }
+  const flying = [];      // particles shooting out during decay
+  function draw() {
+    t += 1 / 60;
+    ctx.clearRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2;
+    const sh = shellsFor(E);
+    const rings = Math.max(sh.length, 1);
+    const maxR = 195;
+    // shells
+    for (let i = 0; i < sh.length; i++) {
+      const rr = 62 + (i + 1) * ((maxR - 62) / rings);
+      ctx.save(); ctx.strokeStyle = 'rgba(79,216,255,0.22)'; ctx.lineWidth = 1.2; ctx.setLineDash([3, 5]);
+      ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      const cnt = sh[i], spd = 0.35 - i * 0.045;
+      for (let j = 0; j < cnt; j++) {
+        const a = (j / cnt) * Math.PI * 2 + t * spd + i;
+        const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+        ball(x, y, 7.5, '#1e9fd8', 'rgba(255,255,255,0.35)');
+      }
+      if (cnt) {
+        ctx.fillStyle = 'rgba(166,181,207,0.75)'; ctx.font = '700 11px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+        ctx.fillText(cnt + '', cx, cy - rr - 6);
+      }
+    }
+    // nucleus
+    const tot = P + N;
+    if (tot > 0) {
+      const nr = Math.min(52, 11 + Math.sqrt(tot) * 6.2);
+      const pr = Math.max(4.5, Math.min(11, nr / Math.max(1.6, Math.sqrt(tot) * 0.75)));
+      const unstable = !isStable(P, N) && P > 0;
+      if (unstable) { ctx.save(); ctx.globalAlpha = 0.25 + 0.2 * Math.sin(t * 6); ctx.fillStyle = '#ffd43b'; ctx.beginPath(); ctx.arc(cx, cy, nr + 12, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      const list = [];
+      for (let i = 0; i < P; i++) list.push('p');
+      for (let i = 0; i < N; i++) list.push('n');
+      // interleave so the colours mix
+      list.sort((a, b) => 0);
+      const mix = [];
+      let pi = 0, ni = 0;
+      for (let i = 0; i < tot; i++) { if ((i % 2 === 0 && pi < P) || ni >= N) { mix.push('p'); pi++; } else { mix.push('n'); ni++; } }
+      for (let i = 0; i < tot; i++) {
+        const q = Math.sqrt((i + 0.6) / tot) * (nr - pr * 0.9), ang = i * 2.39996 + (unstable ? Math.sin(t * 5 + i) * 0.08 : 0);
+        const x = cx + Math.cos(ang) * q, y = cy + Math.sin(ang) * q;
+        ball(x, y, pr, mix[i] === 'p' ? '#ef4b43' : '#8d99ab', 'rgba(0,0,0,0.35)');
+      }
+    } else {
+      ctx.fillStyle = 'rgba(166,181,207,0.6)'; ctx.font = '700 15px "Nunito Sans", sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('Add a proton to start building', cx, cy);
+    }
+    // flying particles from a decay
+    for (let i = flying.length - 1; i >= 0; i--) {
+      const f = flying[i];
+      f.x += f.vx; f.y += f.vy; f.life -= 1 / 60;
+      if (f.life <= 0) { flying.splice(i, 1); continue; }
+      ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, f.life * 2));
+      ball(f.x, f.y, f.r, f.c, 'rgba(255,255,255,0.4)');
+      if (f.label) { ctx.fillStyle = '#fff'; ctx.font = '700 11px "Nunito Sans", sans-serif'; ctx.textAlign = 'center'; ctx.fillText(f.label, f.x, f.y - f.r - 5); }
+      ctx.restore();
+    }
+    requestAnimationFrame(draw);
+  }
+
+  // ---------------- readout ----------------
+  let lastZ = -1;
+  function nm(z) { return EL[z - 1] ? EL[z - 1].name : '?'; }
+  function sym(z) { return EL[z - 1] ? EL[z - 1].sym : '?'; }
+  function chargeText() {
+    const q = P - E;
+    if (!P && !E) return '0';
+    if (q === 0) return '0 (neutral)';
+    return (q > 0 ? '+' : '') + q;
+  }
+  function update(msg) {
+    $('pCt').textContent = P; $('nCt').textContent = N; $('eCt').textContent = E;
+    $('fZ').textContent = P; $('fN').textContent = N; $('fE').textContent = E;
+    $('fA').textContent = P + N; $('fQ').textContent = chargeText();
+    const sh = shellsFor(E);
+    $('fS').textContent = sh.length ? sh.join(' · ') : '—';
+    const cap = limitZ();
+    $('pPlus').classList.toggle('atcap', P >= cap);
+    $('pMinus').disabled = P <= 0; $('nMinus').disabled = N <= 0; $('eMinus').disabled = E <= 0;
+    const q = P - E;
+    if (P === 0) {
+      $('sym').textContent = '?'; $('elname').textContent = N + E > 0 ? 'Not an atom yet' : 'Nothing yet';
+      $('elsub').textContent = 'No protons means no element. Protons are what decide which element you have.';
+      $('note').textContent = 'Tap + under Protons.';
+      $('decayBtn').hidden = true;
+      renderBook(); return;
+    }
+    const name = nm(P), s = sym(P), A = P + N, stable = isStable(P, N);
+    $('sym').textContent = s;
+    $('elname').textContent = name + (N ? '\u2011' + A : '');
+    const ion = q === 0 ? '' : ` · ion ${s}${Math.abs(q) > 1 ? Math.abs(q) : ''}${q > 0 ? '+' : '-'}`;
+    $('elsub').innerHTML = `${P} proton${P > 1 ? 's' : ''}, ${N} neutron${N === 1 ? '' : 's'}, ${E} electron${E === 1 ? '' : 's'}${ion}` +
+      (WT[P - 1] ? ` · periodic table weight ${WT[P - 1]}` : '');
+    // notes
+    const lines = [];
+    const outer = sh.length ? sh[sh.length - 1] : 0, capOuter = SHELL_CAP[sh.length - 1] || 8;
+    if (q === 0 && E > 0) {
+      const wants = (sh.length === 1 ? 2 : 8) - outer;
+      if (E === 2 || E === 10 || E === 18 || E === 36 || E === 54 || E === 86) lines.push('Full outer shell! This is a noble gas. It does not want to bond with anything.');
+      else if (wants > 0 && wants <= 4 && P <= 20) lines.push(`Outer shell has ${outer}. It wants ${wants} more to be full, so it has ${Math.min(outer, wants)} "hand${Math.min(outer, wants) > 1 ? 's' : ''}" for bonding.`);
+    }
+    if (q > 0) lines.push(`Fewer electrons than protons, so the atom is positive: ${s}${Math.abs(q) > 1 ? Math.abs(q) : ''}+. It gave ${q} electron${q > 1 ? 's' : ''} away.`);
+    if (q < 0) lines.push(`Extra electrons, so the atom is negative: ${s}${Math.abs(q) > 1 ? Math.abs(q) : ''}-. It took ${-q} electron${-q < -1 ? 's' : ''} from somebody.`);
+    const fam = FAMOUS[P + '-' + A];
+    if (fam) lines.push(fam);
+    else if (USES[P] && N === 0) lines.push(USES[P]);
+    if (N === 0 && P > 1) lines.push('No neutrons at all. Only hydrogen can really do that, because protons push each other apart and neutrons are the glue.');
+    lines.push(stable ? `${name}-${A} is stable. It will sit like this forever.` : `${name}-${A} is unstable (radioactive). It will fall apart sooner or later.`);
+    $('note').innerHTML = lines.join('<br>');
+    $('note').className = 'note' + (stable ? '' : ' warn');
+    $('decayBtn').hidden = stable || P < 1;
+
+    if (P !== lastZ) {
+      if (lastZ > 0) {
+        say(`${P > lastZ ? 'Added' : 'Removed'} a proton, so it is not ${nm(lastZ)} any more. It is ${name}!`);
+      }
+      lastZ = P;
+      if (!found.has(P)) { found.add(P); store.set('found', [...found]); SFX.newEl(); say(`New element found: ${name} (${s}). Protons are what make it ${name}.`); }
+      else SFX.element();
+    }
+    if (msg) say(msg);
+    renderBook(); renderChall();
+  }
+  function say(html) { $('ev').innerHTML = html; }
+
+  // ---------------- book ----------------
+  function renderBook() {
+    const book = $('book'); const cap = limitZ();
+    if (book.dataset.cap !== String(cap) || book.dataset.n !== String(found.size) || book.dataset.cur !== String(P)) {
+      book.dataset.cap = cap; book.dataset.n = found.size; book.dataset.cur = P;
+      book.innerHTML = '';
+      const show = level >= 3 ? MAXZ : cap;
+      for (let z = 1; z <= show; z++) {
+        const d = document.createElement('div');
+        d.className = 'el' + (found.has(z) ? ' got' : '') + (z === P ? ' cur' : '');
+        d.innerHTML = `<b>${sym(z)}</b><small>${z}</small>`;
+        d.title = nm(z);
+        book.appendChild(d);
+      }
+      const inRange = [...found].filter(z => z <= show).length;
+      $('foundPill').textContent = `${inRange} of ${show}`;
+    }
+  }
+
+  // ---------------- challenges ----------------
+  const LEVELS = [
+    {
+      name: 'Level 1',
+      unlock: 'Finish these to unlock elements 21-36 (iron, copper, zinc and friends).',
+      list: [
+        { id: 'h1', t: 'Build a plain hydrogen atom: 1 proton, 0 neutrons, 1 electron.', ok: () => P === 1 && N === 0 && E === 1 },
+        { id: 'he', t: 'Build a neutral helium atom (2 protons).', ok: () => P === 2 && E === 2 && N === 2 },
+        { id: 'c12', t: 'Build carbon-12: 6 protons, 6 neutrons, 6 electrons.', ok: () => P === 6 && N === 6 && E === 6 },
+        { id: 'c14', t: 'Now make carbon-14 (same element, 2 extra neutrons).', ok: () => P === 6 && N === 8 },
+        { id: 'o', t: 'Build a neutral oxygen atom.', ok: () => P === 8 && E === 8 && N === 8 },
+        { id: 'na', t: 'Make a sodium ion, Na+: sodium with one electron missing.', ok: () => P === 11 && E === 10 },
+        { id: 'cl', t: 'Make a chloride ion, Cl-: chlorine with one extra electron.', ok: () => P === 17 && E === 18 },
+        { id: 'ne', t: 'Build a neutral neon atom and see a full outer shell.', ok: () => P === 10 && E === 10 },
+        { id: 'ca', t: 'Build calcium-40, neutral. The bone builder!', ok: () => P === 20 && N === 20 && E === 20 }
+      ]
+    },
+    {
+      name: 'Level 2',
+      unlock: 'Finish these to unlock every element, all the way to 118.',
+      list: [
+        { id: 'fe', t: 'Build iron-56 (26 protons, 30 neutrons), neutral.', ok: () => P === 26 && N === 30 && E === 26 },
+        { id: 'cu', t: 'Build a neutral copper atom.', ok: () => P === 29 && E === 29 },
+        { id: 'zn2', t: 'Make a zinc ion with a +2 charge.', ok: () => P === 30 && E === 28 },
+        { id: 'kr', t: 'Build krypton, a noble gas with full shells.', ok: () => P === 36 && E === 36 },
+        { id: 'dec', t: 'Build any unstable atom and watch it decay.', ok: () => false },
+        { id: 'br', t: 'Build a neutral bromine atom (35 protons).', ok: () => P === 35 && E === 35 }
+      ]
+    },
+    {
+      name: 'Level 3',
+      unlock: 'Everything is unlocked. Go hunting!',
+      list: [
+        { id: 'au', t: 'Build gold (79 protons). Treasure!', ok: () => P === 79 },
+        { id: 'pb', t: 'Build lead-208, the heaviest stable atom there is.', ok: () => P === 82 && N === 126 },
+        { id: 'u235', t: 'Build uranium-235, the fuel in nuclear power plants.', ok: () => P === 92 && N === 143 },
+        { id: 'og', t: 'Build oganesson, element 118, the heaviest one ever made.', ok: () => P === 118 }
+      ]
+    }
+  ];
+  function renderChall() {
+    const lv = LEVELS[Math.min(level, 3) - 1];
+    $('lvlPill').textContent = lv.name;
+    const box = $('chall'); box.innerHTML = '';
+    let allDone = true;
+    lv.list.forEach(c => {
+      const done = doneCh.has(c.id);
+      if (!done) allDone = false;
+      const d = document.createElement('div');
+      d.innerHTML = `<span class="mark">${done ? '✅' : '⬜️'}</span><span class="${done ? 'done' : ''}">${c.t}</span>`;
+      box.appendChild(d);
+    });
+    $('lvlNote').textContent = (allDone && level < 3 ? 'All done! Next level unlocked. ' : lv.unlock + ' ') + `Right now you can build elements 1-${limitZ()}.`;
+  }
+  function checkChall(special) {
+    const lv = LEVELS[Math.min(level, 3) - 1];
+    let changed = false;
+    lv.list.forEach(c => {
+      if (doneCh.has(c.id)) return;
+      if (c.id === special || (c.id !== 'dec' && c.ok())) { doneCh.add(c.id); changed = true; SFX.win(); say(`Challenge done: ${c.t}`); }
+    });
+    if (changed) {
+      store.set('challenges', [...doneCh]);
+      const all = lv.list.every(c => doneCh.has(c.id));
+      if (all && level < 3) {
+        level++; store.set('level', level);
+        SFX.win();
+        say(level === 2
+          ? 'LEVEL 2 UNLOCKED! You can now build elements up to 36: iron, copper, zinc, krypton and more.'
+          : 'LEVEL 3 UNLOCKED! Every element is open now, all 118 of them, including gold, lead and uranium.');
+      }
+      renderChall(); renderBook(); renderPresets(); update();
+    }
+  }
+
+  // ---------------- decay ----------------
+  function decay() {
+    if (isStable(P, N) || P < 1) return;
+    const kind = decayKind(P, N), cx = W / 2, cy = H / 2;
+    const shoot = (c, r, label) => {
+      const a = Math.random() * Math.PI * 2;
+      flying.push({ x: cx, y: cy, vx: Math.cos(a) * 4.5, vy: Math.sin(a) * 4.5, r, c, life: 1.6, label });
+    };
+    SFX.decay();
+    let msg = '';
+    if (kind === 'alpha') {
+      const to = P - 2;
+      shoot('#ef4b43', 8, 'alpha'); shoot('#8d99ab', 8, '');
+      msg = `<b>Alpha decay!</b> The nucleus threw out 2 protons and 2 neutrons (that clump IS a helium nucleus). ${nm(P)} just turned into ${nm(to)}.`;
+      P = to; N -= 2;
+    } else if (kind === 'beta') {
+      shoot('#4fd8ff', 6, 'electron');
+      msg = `<b>Beta decay!</b> There were too many neutrons, so one neutron turned into a proton and spat out an electron. ${nm(P)} just became ${nm(P + 1)}.`;
+      P += 1; N -= 1;
+    } else {
+      shoot('#ffd43b', 6, 'positron');
+      msg = `<b>Beta-plus decay!</b> There were too few neutrons, so a proton turned into a neutron. ${nm(P)} just became ${nm(P - 1)}.`;
+      P -= 1; N += 1;
+    }
+    if (P > limitZ()) P = limitZ();
+    lastZ = -1;
+    update();
+    checkChall('dec');
+    const ionNote = (P - E) !== 0 ? ' The new atom has the wrong number of electrons for a moment, so it is an ion until it grabs or drops one.' : '';
+    say(msg + ionNote + (isStable(P, N) ? ' Now it is stable, so it stops here.' : ' Still unstable, so it will decay again!'));
+  }
+
+  // ---------------- controls ----------------
+  function bump(which, d) {
+    SFX.unlock();
+    if (which === 'p') {
+      const nv = Math.max(0, Math.min(limitZ(), P + d));
+      if (nv === P) { if (d > 0 && P >= limitZ()) { SFX.bad(); say(level < 3 ? `Element ${P + 1} is locked. Finish the ${LEVELS[level - 1].name} challenges to unlock more elements.` : 'That is element 118, the heaviest one anybody has ever made.'); } return; }
+      P = nv; SFX.proton(d > 0);
+    } else if (which === 'n') {
+      N = Math.max(0, Math.min(250, N + d)); SFX.neutron(d > 0);
+      if (d > 0 && P > 0) say(`Neutrons change the weight, not the element. This is still ${nm(P)}, now ${nm(P)}-${P + N}.`);
+    } else {
+      E = Math.max(0, Math.min(150, E + d)); SFX.electron(d > 0);
+      if (P > 0 && E !== P) say('Electrons change the charge, not the element. An atom with the wrong number of electrons is called an ion.');
+      else if (P > 0 && E === P) say('Same number of protons and electrons, so the charges cancel out. The atom is neutral.');
+    }
+    update(); checkChall();
+  }
+  const hold = (id, fn) => {
+    const b = $(id); let timer = null, rep = null;
+    const go = () => { fn(); };
+    b.addEventListener('click', go);
+    b.addEventListener('pointerdown', () => { timer = setTimeout(() => { rep = setInterval(fn, 90); }, 450); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => { clearTimeout(timer); clearInterval(rep); }));
+  };
+  hold('pPlus', () => bump('p', 1)); hold('pMinus', () => bump('p', -1));
+  hold('nPlus', () => bump('n', 1)); hold('nMinus', () => bump('n', -1));
+  hold('ePlus', () => bump('e', 1)); hold('eMinus', () => bump('e', -1));
+
+  $('neutralBtn').addEventListener('click', () => { E = P; SFX.electron(true); update('Electrons now match protons, so the atom is neutral.'); checkChall(); });
+  $('commonBtn').addEventListener('click', () => {
+    if (!P) { P = 6; }
+    N = Math.max(0, (COMMON[P - 1] || P * 2) - P); E = P; lastZ = -1; SFX.element();
+    update(`This is the everyday version of ${nm(P)}: ${nm(P)}-${P + N}.`); checkChall();
+  });
+  $('clearBtn').addEventListener('click', () => { P = N = E = 0; lastZ = -1; flying.length = 0; update('Cleared. Start again!'); });
+  $('decayBtn').addEventListener('click', decay);
+  $('soundBtn').addEventListener('click', () => { soundOn = !soundOn; store.set('sound', soundOn); $('soundBtn').textContent = soundOn ? '🔊 Sound' : '🔇 Muted'; if (soundOn) { SFX.unlock(); SFX.electron(true); } });
+
+  const PRESETS = [[1, 'Hydrogen'], [6, 'Carbon'], [8, 'Oxygen'], [11, 'Sodium'], [26, 'Iron'], [79, 'Gold'], [92, 'Uranium']];
+  function renderPresets() {
+    const box = $('presets'); box.innerHTML = '';
+    PRESETS.forEach(([z, label]) => {
+      const b = document.createElement('button');
+      const locked = z > limitZ();
+      b.className = 'ghost'; b.disabled = locked;
+      b.textContent = (locked ? '🔒 ' : '') + label;
+      b.addEventListener('click', () => { P = z; N = COMMON[z - 1] - z; E = z; lastZ = -1; SFX.element(); update(`Here is ${nm(z)}: ${z} protons, ${N} neutrons, ${z} electrons.`); checkChall(); });
+      box.appendChild(b);
+    });
+  }
+
+  window.addEventListener('resize', () => { resize(); renderBook(); });
+  window.addEventListener('pointerdown', () => SFX.unlock(), { passive: true });
+  window.__ab = { set: (p, n, e) => { P = p; N = n; E = e; lastZ = -1; update(); checkChall(); }, state: () => ({ P, N, E, level, found: [...found], ch: [...doneCh] }), decay };
+
+  $('soundBtn').textContent = soundOn ? '🔊 Sound' : '🔇 Muted';
+  resize(); renderPresets(); renderChall(); update(); draw();
+})();
+</script>
+<div style="position:fixed;right:8px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font:600 11px/1 ui-monospace,Menlo,monospace;color:#9fb0cc;opacity:.55;pointer-events:none;z-index:50">v5</div>
+
+</body>
+</html>

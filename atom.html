@@ -80,7 +80,7 @@
   .pill.bad { background: #5a2020; color: #ffd0c8; }
   .pill.good { background: #204a2a; color: #cdf5d6; }
 </style>
-<a href="index.html?v=5" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
+<a href="index.html?v=6" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
 
 
 <div class="wrap">
@@ -134,8 +134,9 @@
           <div><b>Protons (atomic number)</b><i id="fZ">0</i></div>
           <div><b>Neutrons</b><i id="fN">0</i></div>
           <div><b>Electrons</b><i id="fE">0</i></div>
-          <div><b>Mass number (p + n)</b><i id="fA">0</i></div>
-          <div><b>Charge</b><i id="fQ">0</i></div>
+          <div><b>This atom weighs</b><i id="fA">0</i></div>
+          <div><b>Periodic table average</b><i id="fW">—</i></div>
+          <div><b>Charge (p − e)</b><i id="fQ">0</i></div>
           <div><b>Shells</b><i id="fS" class="shells">—</i></div>
         </div>
         <div class="note" id="note">Tap + under Protons.</div>
@@ -322,10 +323,18 @@
   function draw() {
     t += 1 / 60;
     ctx.clearRect(0, 0, W, H);
-    const cx = W / 2, cy = H / 2;
+    const cx = W / 2, cy = H / 2 - 16;
+    const q = P - E;
+    // warm glow when positive, cool when negative
+    if (P + E > 0 && q !== 0) {
+      const g = ctx.createRadialGradient(cx, cy, 20, cx, cy, 215);
+      g.addColorStop(0, q > 0 ? 'rgba(255,90,70,0.13)' : 'rgba(70,170,255,0.13)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
     const sh = shellsFor(E);
     const rings = Math.max(sh.length, 1);
-    const maxR = 195;
+    const maxR = 178;
     // shells
     for (let i = 0; i < sh.length; i++) {
       const rr = 62 + (i + 1) * ((maxR - 62) / rings);
@@ -366,6 +375,47 @@
       ctx.fillStyle = 'rgba(166,181,207,0.6)'; ctx.font = '700 15px "Nunito Sans", sans-serif'; ctx.textAlign = 'center';
       ctx.fillText('Add a proton to start building', cx, cy);
     }
+    // what it weighs + how many of each, right on the picture
+    if (P + N > 0) {
+      ctx.fillStyle = 'rgba(230,240,255,0.85)'; ctx.font = '700 13px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+      ctx.fillText(`${P} p + ${N} n = weighs ${P + N}`, cx, H - 96);
+    }
+    // charge badge
+    if (P + E > 0) {
+      const txt = q === 0 ? '0' : (q > 0 ? '+' : '−') + Math.abs(q);
+      const col = q === 0 ? '#3fb950' : q > 0 ? '#ef4b43' : '#4fd8ff';
+      const bx = W - 54, by = 40;
+      ctx.save();
+      ctx.fillStyle = 'rgba(10,16,28,0.85)'; ctx.strokeStyle = col; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(bx, by, 26, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = col; ctx.font = '800 ' + (Math.abs(q) > 9 ? 17 : 21) + 'px "Baloo 2", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(txt, bx, by + 1);
+      ctx.fillStyle = 'rgba(166,181,207,0.9)'; ctx.font = '700 10.5px "Nunito Sans", sans-serif'; ctx.textBaseline = 'alphabetic';
+      ctx.fillText(q === 0 ? 'neutral' : q > 0 ? 'positive ion' : 'negative ion', bx, by + 40);
+      ctx.restore();
+    }
+    // see-saw: protons on one side, electrons on the other
+    if (P + E > 0) {
+      const by = H - 44, half = 118, tilt = Math.max(-0.22, Math.min(0.22, (E - P) * 0.075));
+      ctx.save(); ctx.translate(cx, by); ctx.rotate(tilt);
+      ctx.strokeStyle = 'rgba(180,200,230,0.55)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-half, 0); ctx.lineTo(half, 0); ctx.stroke();
+      const stack = (side, n, col) => {
+        const shown = Math.min(n, 10), x0 = side * (half - 12);
+        for (let i = 0; i < shown; i++) {
+          const perRow = 5, row = Math.floor(i / perRow), c = i % perRow;
+          ball(x0 - side * c * 13, -9 - row * 13, 5.5, col, 'rgba(0,0,0,0.3)');
+        }
+        ctx.fillStyle = 'rgba(230,240,255,0.9)'; ctx.font = '700 12px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+        ctx.fillText(n + '', x0 - side * 26, 18);
+      };
+      stack(-1, P, '#ef4b43'); stack(1, E, '#1e9fd8');
+      ctx.restore();
+      ctx.fillStyle = 'rgba(180,200,230,0.55)';
+      ctx.beginPath(); ctx.moveTo(cx - 12, by + 22); ctx.lineTo(cx + 12, by + 22); ctx.lineTo(cx, by + 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(166,181,207,0.8)'; ctx.font = '700 10.5px "Nunito Sans", sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('protons', cx - 86, by + 40); ctx.fillText('electrons', cx + 86, by + 40);
+    }
     // flying particles from a decay
     for (let i = flying.length - 1; i >= 0; i--) {
       const f = flying[i];
@@ -392,7 +442,8 @@
   function update(msg) {
     $('pCt').textContent = P; $('nCt').textContent = N; $('eCt').textContent = E;
     $('fZ').textContent = P; $('fN').textContent = N; $('fE').textContent = E;
-    $('fA').textContent = P + N; $('fQ').textContent = chargeText();
+    $('fA').textContent = (P + N) + (P + N ? ' × a hydrogen' : ''); $('fQ').textContent = chargeText();
+    $('fW').textContent = P && WT[P - 1] ? WT[P - 1] : (P ? 'about ' + (COMMON[P - 1] || '?') : '—');
     const sh = shellsFor(E);
     $('fS').textContent = sh.length ? sh.join(' · ') : '—';
     const cap = limitZ();
@@ -410,8 +461,7 @@
     $('sym').textContent = s;
     $('elname').textContent = name + (N ? '\u2011' + A : '');
     const ion = q === 0 ? '' : ` · ion ${s}${Math.abs(q) > 1 ? Math.abs(q) : ''}${q > 0 ? '+' : '-'}`;
-    $('elsub').innerHTML = `${P} proton${P > 1 ? 's' : ''}, ${N} neutron${N === 1 ? '' : 's'}, ${E} electron${E === 1 ? '' : 's'}${ion}` +
-      (WT[P - 1] ? ` · periodic table weight ${WT[P - 1]}` : '');
+    $('elsub').innerHTML = `${P} proton${P > 1 ? 's' : ''}, ${N} neutron${N === 1 ? '' : 's'}, ${E} electron${E === 1 ? '' : 's'}${ion}`;
     // notes
     const lines = [];
     const outer = sh.length ? sh[sh.length - 1] : 0, capOuter = SHELL_CAP[sh.length - 1] || 8;
@@ -422,6 +472,9 @@
     }
     if (q > 0) lines.push(`Fewer electrons than protons, so the atom is positive: ${s}${Math.abs(q) > 1 ? Math.abs(q) : ''}+. It gave ${q} electron${q > 1 ? 's' : ''} away.`);
     if (q < 0) lines.push(`Extra electrons, so the atom is negative: ${s}${Math.abs(q) > 1 ? Math.abs(q) : ''}-. It took ${-q} electron${-q < -1 ? 's' : ''} from somebody.`);
+    if (WT[P - 1] && Math.abs(WT[P - 1] - A) > 0.3 && N > 0) {
+      lines.push(`Your atom weighs ${A}, but the periodic table says ${WT[P - 1]} for ${name}. That number is the AVERAGE of every ${name} atom in the world, and they do not all have the same number of neutrons.`);
+    }
     const fam = FAMOUS[P + '-' + A];
     if (fam) lines.push(fam);
     else if (USES[P] && N === 0) lines.push(USES[P]);
@@ -629,7 +682,7 @@
   resize(); renderPresets(); renderChall(); update(); draw();
 })();
 </script>
-<div style="position:fixed;right:8px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font:600 11px/1 ui-monospace,Menlo,monospace;color:#9fb0cc;opacity:.55;pointer-events:none;z-index:50">v5</div>
+<div style="position:fixed;right:8px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font:600 11px/1 ui-monospace,Menlo,monospace;color:#9fb0cc;opacity:.55;pointer-events:none;z-index:50">v6</div>
 
 </body>
 </html>

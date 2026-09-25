@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Molecule Lab">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+</head>
+<body>
+<title>Element Names</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito+Sans:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root {
+    --ink: #0e1420; --panel: #172133; --panel-2: #22304a; --line: #33456a;
+    --text: #eef3fb; --muted: #a6b5cf; --gold: #ffd43b; --mint: #7ee081; --coral: #ff7a6b; --sky: #4fd8ff;
+    --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { background: var(--ink); color: var(--text); margin: 0; -webkit-text-size-adjust: 100%; }
+  body { font-family: var(--body); font-size: 15px; line-height: 1.45; -webkit-tap-highlight-color: transparent; }
+  .wrap { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 14px 36px; display: grid; gap: 14px; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(30px, 6vw, 44px); line-height: 1; margin: 0; }
+  h1 span { color: var(--gold); }
+  .tag { color: var(--muted); font-size: 14px; }
+  @media (max-width: 600px) { .tag { display: none; } }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+  .stat { display: grid; }
+  .stat small { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-weight: 700; white-space: nowrap; }
+  .stat b { font-family: var(--mono); font-size: 19px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+  .qnum { font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .q { font-family: var(--display); font-weight: 800; font-size: clamp(21px, 4.6vw, 28px); line-height: 1.15; }
+  .q em { font-style: normal; color: var(--gold); }
+  .chip { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px 2px; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
+  .opts { display: grid; gap: 8px; }
+  button.opt { text-align: left; font-family: var(--body); font-size: 15.5px; font-weight: 700; color: var(--text); background: var(--panel-2); border: 0; border-radius: 12px; padding: 12px 14px; cursor: pointer; display: flex; gap: 10px; align-items: baseline; line-height: 1.3; }
+  button.opt:active { transform: scale(.995); }
+  button.opt .k { font-family: var(--mono); color: var(--muted); font-size: 13px; }
+  button.opt.right { background: #1d4a2b; box-shadow: inset 0 0 0 2px var(--mint); }
+  button.opt.wrong { background: #4d1f1f; box-shadow: inset 0 0 0 2px var(--coral); }
+  button.opt.dim { opacity: .5; }
+  button.opt:disabled { cursor: default; }
+  .verdict { font-family: var(--display); font-weight: 800; font-size: 20px; }
+  .verdict.ok { color: var(--mint); } .verdict.no { color: var(--coral); }
+  .story { font-size: 14.5px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button.go { font-family: var(--display); font-weight: 600; font-size: 16px; border: 0; border-radius: 10px; padding: 9px 18px 7px; cursor: pointer; color: var(--ink); background: var(--gold); }
+  button.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--line); border: 0; border-radius: 10px; padding: 8px 14px 6px; font-family: var(--display); font-size: 15px; cursor: pointer; }
+  .rows { display: grid; gap: 5px; }
+  .rows > div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 4px; font-size: 14.5px; }
+  .rows b { color: var(--muted); font-weight: 700; }
+  .rows i { font-style: normal; font-family: var(--mono); }
+  .picker { display: flex; flex-wrap: wrap; gap: 6px; }
+  .picker button { font-family: var(--body); font-weight: 700; font-size: 13px; border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; background: var(--panel-2); color: var(--muted); }
+  .picker button.on { background: var(--gold); color: var(--ink); }
+  .bookgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 4px; }
+  .bel { background: var(--panel-2); border-radius: 8px; padding: 5px 2px 4px; text-align: center; font-size: 10.5px; line-height: 1.1; opacity: .35; }
+  .bel b { display: block; font-family: var(--display); font-size: 15px; }
+  .bel.got { opacity: 1; background: #2b3f63; }
+  h2 { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin: 0; font-weight: 600; }
+</style>
+<a href="index.html?v=7" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
+
+
+<div class="wrap">
+  <header>
+    <h1>Element <span>Names</span></h1>
+    <div class="tag">Every element on the periodic table is named after something: a god, a planet, a place, a person, a color or a smell. Can you guess which?</div>
+  </header>
+
+  <div class="bar">
+    <div class="stat"><small>Score</small><b id="score">0</b></div>
+    <div class="stat"><small>Streak</small><b id="streak">0</b></div>
+    <div class="stat"><small>Best round</small><b id="best">0</b></div>
+    <div class="stat"><small>Named right</small><b id="known">0</b></div>
+  </div>
+
+  <div class="card" id="game">
+    <div class="qnum" id="qnum">Question 1 of 10</div>
+    <div class="q" id="q">Loading…</div>
+    <div class="opts" id="opts"></div>
+    <div id="after" hidden>
+      <div class="verdict" id="verdict"></div>
+      <div class="story" id="story"></div>
+      <div class="btns" style="margin-top:10px"><button class="go" id="nextBtn">Next question</button></div>
+    </div>
+  </div>
+
+  <div class="card" id="endcard" hidden>
+    <h2>Round finished</h2>
+    <div class="q" id="endTitle"></div>
+    <div class="rows" id="endRows"></div>
+    <div class="btns"><button class="go" id="againBtn">Play again</button></div>
+  </div>
+
+  <div class="card">
+    <h2>Pick a kind of name</h2>
+    <div class="picker" id="picker"></div>
+    <div class="btns">
+      <button class="ghost" id="soundBtn">🔊 Sound</button>
+      <button class="ghost" id="resetBtn">Reset my progress</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Names you have gotten right <span class="chip" id="knownPill">0</span></h2>
+    <div class="bookgrid" id="book"></div>
+  </div>
+</div>
+
+<script>
+// element name origins. cat: myth | space | place | person | color | property | ancient
+const NAMES = [
+  { n: 'Titanium', s: 'Ti', z: 22, cat: 'myth', a: 'The Titans, the giant gods of Greek myth', st: 'Named for the Titans because it is so strong. It is as strong as steel but much lighter, so rockets and jet engines are full of it.' },
+  { n: 'Vanadium', s: 'V', z: 23, cat: 'myth', a: 'Vanadis, a Norse goddess of beauty', st: 'Its compounds come in beautiful colors, so it was named after Vanadis, another name for the Norse goddess Freyja.' },
+  { n: 'Tantalum', s: 'Ta', z: 73, cat: 'myth', a: 'Tantalus, a king punished by the Greek gods', st: 'Tantalus stood in water he could never drink. The metal will not soak up acid no matter how long it sits in it, so the name fit. The word "tantalize" comes from the same king.' },
+  { n: 'Niobium', s: 'Nb', z: 41, cat: 'myth', a: 'Niobe, the daughter of Tantalus', st: 'Niobium is found with tantalum and acts a lot like it, so it was named after Tantalus’s daughter.' },
+  { n: 'Promethium', s: 'Pm', z: 61, cat: 'myth', a: 'Prometheus, who stole fire for humans', st: 'It is radioactive and made by people, not dug up. The name is a warning: stealing fire from the gods came with a price.' },
+  { n: 'Thorium', s: 'Th', z: 90, cat: 'myth', a: 'Thor, the Norse god of thunder', st: 'Named by a Swedish chemist after the hammer-swinging god of thunder.' },
+  { n: 'Cobalt', s: 'Co', z: 27, cat: 'myth', a: 'Kobolds, goblins from German folklore', st: 'Miners blamed goblins when this ore refused to give up copper and made them sick instead.' },
+  { n: 'Nickel', s: 'Ni', z: 28, cat: 'myth', a: 'A trick played by "Old Nick", the devil', st: 'Miners called the ore Kupfernickel, "Old Nick’s copper", because it looked like copper ore but gave them none.' },
+  { n: 'Helium', s: 'He', z: 2, cat: 'space', a: 'Helios, the Greek sun god', st: 'Helium was spotted in the light of the Sun during an eclipse in 1868, years before anybody found it on Earth. It is the only element discovered in space first.' },
+  { n: 'Selenium', s: 'Se', z: 34, cat: 'space', a: 'Selene, the Greek goddess of the Moon', st: 'It kept turning up alongside tellurium, which is named for the Earth, so it got named for the Moon.' },
+  { n: 'Tellurium', s: 'Te', z: 52, cat: 'space', a: 'Tellus, the Latin name for the Earth', st: 'Named after our own planet, which makes it the Earth’s namesake on the periodic table.' },
+  { n: 'Uranium', s: 'U', z: 92, cat: 'space', a: 'The planet Uranus', st: 'The planet had just been discovered eight years earlier, and the name was still exciting.' },
+  { n: 'Neptunium', s: 'Np', z: 93, cat: 'space', a: 'The planet Neptune', st: 'It sits right after uranium on the table, just as Neptune sits past Uranus in the solar system.' },
+  { n: 'Plutonium', s: 'Pu', z: 94, cat: 'space', a: 'Pluto, then the ninth planet', st: 'Uranium, neptunium, plutonium: three elements in a row named for three planets in a row.' },
+  { n: 'Cerium', s: 'Ce', z: 58, cat: 'space', a: 'Ceres, the first asteroid ever found', st: 'The asteroid was discovered two years before the element, and the name was borrowed while it was still famous.' },
+  { n: 'Palladium', s: 'Pd', z: 46, cat: 'space', a: 'Pallas, an asteroid named for the goddess Athena', st: 'Discovered right after the asteroid Pallas was found, and named to match.' },
+  { n: 'Mercury', s: 'Hg', z: 80, cat: 'space', a: 'The planet Mercury, the fastest one', st: 'The only metal that is liquid at room temperature, so it skitters away fast. Its symbol Hg comes from hydrargyrum, Greek for "water silver".' },
+  { n: 'Yttrium', s: 'Y', z: 39, cat: 'place', shared: true, a: 'Ytterby, a tiny village in Sweden', st: 'FOUR elements are named after this one little quarry: yttrium, ytterbium, terbium and erbium. No place on Earth has more elements named after it.' },
+  { n: 'Terbium', s: 'Tb', z: 65, cat: 'place', shared: true, a: 'Ytterby, a tiny village in Sweden', st: 'One of four elements named after the same Swedish quarry.' },
+  { n: 'Erbium', s: 'Er', z: 68, cat: 'place', shared: true, a: 'Ytterby, a tiny village in Sweden', st: 'Another of the four Ytterby elements.' },
+  { n: 'Ytterbium', s: 'Yb', z: 70, cat: 'place', shared: true, a: 'Ytterby, a tiny village in Sweden', st: 'The fourth Ytterby element, and the one that kept the village name almost whole.' },
+  { n: 'Scandium', s: 'Sc', z: 21, cat: 'place', a: 'Scandinavia', st: 'Found in Scandinavian minerals and named for the region.' },
+  { n: 'Hafnium', s: 'Hf', z: 72, cat: 'place', a: 'Hafnia, the old Latin name for Copenhagen', st: 'Named for the city where it was discovered, in Denmark.' },
+  { n: 'Holmium', s: 'Ho', z: 67, cat: 'place', a: 'Holmia, the old Latin name for Stockholm', st: 'Sweden’s capital city, hiding in the periodic table.' },
+  { n: 'Lutetium', s: 'Lu', z: 71, cat: 'place', a: 'Lutetia, the Roman name for Paris', st: 'Paris was called Lutetia when the Romans ran it.' },
+  { n: 'Germanium', s: 'Ge', z: 32, cat: 'place', a: 'Germany', st: 'Its discoverer was German, and he named it for his country.' },
+  { n: 'Polonium', s: 'Po', z: 84, cat: 'place', a: 'Poland', st: 'Marie Curie named it after her homeland, which at the time was not even on the map as its own country. It was a protest as much as a name.' },
+  { n: 'Francium', s: 'Fr', z: 87, cat: 'place', a: 'France', st: 'Discovered in Paris by Marguerite Perey and named for her country.' },
+  { n: 'Gallium', s: 'Ga', z: 31, cat: 'place', a: 'Gallia, the Roman name for France', st: 'There is a hidden joke: the discoverer was named Lecoq, and "le coq" means rooster, which is gallus in Latin. He always denied it.' },
+  { n: 'Americium', s: 'Am', z: 95, cat: 'place', a: 'The Americas', st: 'Named to sit under europium on the table, the way America sits across from Europe.' },
+  { n: 'Europium', s: 'Eu', z: 63, cat: 'place', a: 'Europe', st: 'A whole continent on the periodic table.' },
+  { n: 'Ruthenium', s: 'Ru', z: 44, cat: 'place', a: 'Ruthenia, the old Latin name for Russia', st: 'Named by a chemist working in Russia for his adopted home.' },
+  { n: 'Rhenium', s: 'Re', z: 75, cat: 'place', a: 'The Rhine, a river in Germany', st: 'The last stable element to be discovered, in 1925, named for the river.' },
+  { n: 'Strontium', s: 'Sr', z: 38, cat: 'place', a: 'Strontian, a village in Scotland', st: 'A tiny Scottish village with an element to its name. It burns bright red in fireworks.' },
+  { n: 'Magnesium', s: 'Mg', z: 12, cat: 'place', shared: true, a: 'Magnesia, a district in Greece', st: 'The same district gave us the words magnet and manganese.' },
+  { n: 'Copper', s: 'Cu', z: 29, cat: 'place', a: 'Cyprus, the island the Romans mined', st: 'Romans called it aes cyprium, "metal of Cyprus", which wore down to cuprum, and then to copper. That is why the symbol is Cu.' },
+  { n: 'Californium', s: 'Cf', z: 98, cat: 'place', a: 'California and its university', st: 'Made at the University of California, Berkeley.' },
+  { n: 'Berkelium', s: 'Bk', z: 97, cat: 'place', a: 'Berkeley, California', st: 'Named for the town where the lab sits.' },
+  { n: 'Dubnium', s: 'Db', z: 105, cat: 'place', a: 'Dubna, a research town in Russia', st: 'Named for the Russian lab that fought a long naming battle with the American one.' },
+  { n: 'Darmstadtium', s: 'Ds', z: 110, cat: 'place', a: 'Darmstadt, a city in Germany', st: 'Made at the heavy-ion lab there, one atom at a time.' },
+  { n: 'Nihonium', s: 'Nh', z: 113, cat: 'place', a: 'Nihon, what Japan is called in Japanese', st: 'The first element ever named in Asia.' },
+  { n: 'Tennessine', s: 'Ts', z: 117, cat: 'place', a: 'Tennessee', st: 'Named for the state where Oak Ridge National Laboratory made the target material.' },
+  { n: 'Moscovium', s: 'Mc', z: 115, cat: 'place', a: 'The Moscow region of Russia', st: 'Named for the area around the Dubna lab.' },
+  { n: 'Hassium', s: 'Hs', z: 108, cat: 'place', a: 'Hesse, a German state', st: 'Hassia is the Latin name for Hesse, where it was made.' },
+  { n: 'Livermorium', s: 'Lv', z: 116, cat: 'place', a: 'Livermore, California', st: 'Named for Lawrence Livermore National Laboratory.' },
+  { n: 'Curium', s: 'Cm', z: 96, cat: 'person', a: 'Marie and Pierre Curie', st: 'The only element named after a married couple. Marie Curie won two Nobel Prizes.' },
+  { n: 'Einsteinium', s: 'Es', z: 99, cat: 'person', a: 'Albert Einstein', st: 'Found in the fallout of the first hydrogen bomb test, and named for Einstein, who hated the bomb.' },
+  { n: 'Fermium', s: 'Fm', z: 100, cat: 'person', a: 'Enrico Fermi, who built the first reactor', st: 'Fermi built the first nuclear reactor under the stands of a football stadium in Chicago.' },
+  { n: 'Mendelevium', s: 'Md', z: 101, cat: 'person', a: 'Dmitri Mendeleev, who invented the periodic table', st: 'He laid out the table and left gaps for elements nobody had found yet. He was right about them.' },
+  { n: 'Nobelium', s: 'No', z: 102, cat: 'person', a: 'Alfred Nobel, inventor of dynamite', st: 'The same Nobel whose fortune pays for the Nobel Prizes.' },
+  { n: 'Lawrencium', s: 'Lr', z: 103, cat: 'person', a: 'Ernest Lawrence, inventor of the cyclotron', st: 'His atom smasher is how many of these heavy elements got made.' },
+  { n: 'Rutherfordium', s: 'Rf', z: 104, cat: 'person', a: 'Ernest Rutherford, who found the nucleus', st: 'He fired particles at gold foil and discovered atoms have a tiny dense middle.' },
+  { n: 'Seaborgium', s: 'Sg', z: 106, cat: 'person', a: 'Glenn Seaborg, who discovered plutonium', st: 'He was still alive when it was named, which had never been allowed before. He said it was the best honor of his life.' },
+  { n: 'Bohrium', s: 'Bh', z: 107, cat: 'person', a: 'Niels Bohr, who explained electron shells', st: 'The shells in Atom Builder are his idea.' },
+  { n: 'Meitnerium', s: 'Mt', z: 109, cat: 'person', a: 'Lise Meitner, who explained nuclear fission', st: 'She worked out how a nucleus splits, but the Nobel Prize went to her partner instead of her.' },
+  { n: 'Roentgenium', s: 'Rg', z: 111, cat: 'person', a: 'Wilhelm Röntgen, who discovered X-rays', st: 'His first X-ray picture was of his wife’s hand, wedding ring and all.' },
+  { n: 'Copernicium', s: 'Cn', z: 112, cat: 'person', a: 'Nicolaus Copernicus', st: 'He worked out that the Earth goes around the Sun, not the other way around.' },
+  { n: 'Oganesson', s: 'Og', z: 118, cat: 'person', a: 'Yuri Oganessian, a living scientist', st: 'Only the second element ever named for someone still alive. It is the heaviest element anybody has made.' },
+  { n: 'Flerovium', s: 'Fl', z: 114, cat: 'person', a: 'Georgy Flyorov, a Soviet physicist', st: 'He wrote to Stalin warning that other countries had gone quiet about nuclear research, which meant they were building something.' },
+  { n: 'Gadolinium', s: 'Gd', z: 64, cat: 'person', a: 'Johan Gadolin, a Finnish chemist', st: 'He was the first person to pull an element out of the famous Ytterby rocks.' },
+  { n: 'Samarium', s: 'Sm', z: 62, cat: 'person', a: 'A Russian mine official named Samarsky', st: 'Through the mineral samarskite, this became the first element ever named after a real person.' },
+  { n: 'Chlorine', s: 'Cl', z: 17, cat: 'color', a: 'Chloros, Greek for pale green', st: 'Chlorine gas really is a sickly yellow-green.' },
+  { n: 'Chromium', s: 'Cr', z: 24, cat: 'color', a: 'Chroma, Greek for color', st: 'Its compounds come in so many colors that it got named "color" itself. Rubies are red and emeralds are green thanks to chromium.' },
+  { n: 'Iodine', s: 'I', z: 53, cat: 'color', a: 'Iodes, Greek for violet', st: 'Heat it and it turns straight into a purple vapor without melting first.' },
+  { n: 'Rhodium', s: 'Rh', z: 45, cat: 'color', a: 'Rhodon, Greek for rose', st: 'Its salts dissolve into a rose-pink solution.' },
+  { n: 'Rubidium', s: 'Rb', z: 37, cat: 'color', a: 'Rubidus, Latin for deep red', st: 'Named for the two deep red lines it makes in a spectroscope.' },
+  { n: 'Cesium', s: 'Cs', z: 55, cat: 'color', a: 'Caesius, Latin for sky blue', st: 'Named for its blue spectral lines. Atomic clocks keep time by counting cesium.' },
+  { n: 'Indium', s: 'In', z: 49, cat: 'color', a: 'The color indigo', st: 'It burns with an indigo-blue line in a flame test.' },
+  { n: 'Thallium', s: 'Tl', z: 81, cat: 'color', a: 'Thallos, Greek for a green shoot', st: 'Named for the bright green line it makes, like a fresh green twig.' },
+  { n: 'Praseodymium', s: 'Pr', z: 59, cat: 'color', a: 'Greek for "green twin"', st: 'It was split from a substance called didymium, "the twin". The green half became praseodymium and the other half neodymium, the "new twin".' },
+  { n: 'Argon', s: 'Ar', z: 18, cat: 'property', a: 'Argos, Greek for lazy', st: 'It refuses to react with anything, so they called it the lazy one.' },
+  { n: 'Neon', s: 'Ne', z: 10, cat: 'property', a: 'Neos, Greek for new', st: 'The discoverer’s 12-year-old son suggested the name.' },
+  { n: 'Krypton', s: 'Kr', z: 36, cat: 'property', a: 'Kryptos, Greek for hidden', st: 'It hides in the air in tiny amounts and took a long time to spot. Superman’s home planet got the name from the element, not the other way around.' },
+  { n: 'Xenon', s: 'Xe', z: 54, cat: 'property', a: 'Xenos, Greek for stranger', st: 'A strange gas nobody expected to find in air.' },
+  { n: 'Bromine', s: 'Br', z: 35, cat: 'property', a: 'Bromos, Greek for stench', st: 'It smells terrible. The name is basically "stinky".' },
+  { n: 'Osmium', s: 'Os', z: 76, cat: 'property', a: 'Osme, Greek for smell', st: 'Its oxide smells sharp and awful, and it is the densest element there is.' },
+  { n: 'Barium', s: 'Ba', z: 56, cat: 'property', a: 'Barys, Greek for heavy', st: 'Its minerals felt surprisingly heavy for rocks.' },
+  { n: 'Lithium', s: 'Li', z: 3, cat: 'property', a: 'Lithos, Greek for stone', st: 'Other alkali metals were found in plants and ashes, but this one came out of a rock.' },
+  { n: 'Hydrogen', s: 'H', z: 1, cat: 'property', a: 'Greek for "water maker"', st: 'Burn hydrogen and you get water. That is literally what the name says.' },
+  { n: 'Oxygen', s: 'O', z: 8, cat: 'property', a: 'Greek for "acid maker"', st: 'Lavoisier thought every acid contained oxygen. He was wrong, but the name stuck.' },
+  { n: 'Phosphorus', s: 'P', z: 15, cat: 'property', a: 'Greek for "light bringer"', st: 'It glows in the dark. It was discovered by boiling down buckets of human urine, which is a true and disgusting fact.' },
+  { n: 'Dysprosium', s: 'Dy', z: 66, cat: 'property', a: 'Dysprositos, Greek for "hard to get at"', st: 'It was so hard to separate that the chemist named it after his own frustration.' },
+  { n: 'Lanthanum', s: 'La', z: 57, cat: 'property', a: 'Lanthanein, Greek for "to lie hidden"', st: 'It hid inside cerium for 36 years before anybody noticed it.' },
+  { n: 'Technetium', s: 'Tc', z: 43, cat: 'property', a: 'Technetos, Greek for artificial', st: 'The first element ever made by people instead of found in nature. There is a gap on Earth where it should be.' },
+  { n: 'Astatine', s: 'At', z: 85, cat: 'property', a: 'Astatos, Greek for unstable', st: 'The rarest natural element on Earth. At any moment there is less than a teaspoon of it in the whole planet’s crust.' },
+  { n: 'Radium', s: 'Ra', z: 88, cat: 'property', a: 'Radius, Latin for ray', st: 'It glows in the dark with its own light. Marie Curie kept a glowing sample by her bed.' },
+  { n: 'Fluorine', s: 'F', z: 9, cat: 'property', a: 'Fluere, Latin for "to flow"', st: 'Its mineral was added to metal to help it melt and flow.' },
+  { n: 'Silicon', s: 'Si', z: 14, cat: 'ancient', a: 'Silex, Latin for flint', st: 'Flint, sand and glass are all mostly silicon. So are computer chips.' },
+  { n: 'Carbon', s: 'C', z: 6, cat: 'ancient', a: 'Carbo, Latin for coal', st: 'Named for charcoal, though the same element makes diamonds.' },
+  { n: 'Calcium', s: 'Ca', z: 20, cat: 'ancient', a: 'Calx, Latin for lime', st: 'Lime is burnt limestone, used for building for thousands of years.' },
+  { n: 'Potassium', s: 'K', z: 19, cat: 'ancient', a: 'Potash, ashes soaked in a pot', st: 'Named for how people got it: burn wood, soak the ashes in a pot, boil off the water. Its symbol K comes from the Arabic-rooted word kalium.' },
+  { n: 'Sodium', s: 'Na', z: 11, cat: 'ancient', a: 'Soda', st: 'Its symbol Na comes from natrium, from natron, an Egyptian mineral used for mummies.' },
+  { n: 'Gold', s: 'Au', z: 79, cat: 'ancient', a: 'Aurum, Latin for "glowing dawn"', st: 'The symbol Au comes from aurum. The English word gold comes from an older word meaning yellow.' },
+  { n: 'Lead', s: 'Pb', z: 82, cat: 'ancient', a: 'Plumbum, the Latin name for the metal', st: 'Romans made water pipes of it, which is why we call pipe workers plumbers.' },
+  { n: 'Iron', s: 'Fe', z: 26, cat: 'ancient', a: 'Ferrum, the Latin name for the metal', st: 'The symbol Fe comes from ferrum. Iron was worth more than gold when it first arrived from meteorites.' },
+  { n: 'Silver', s: 'Ag', z: 47, cat: 'ancient', a: 'Argentum, Latin for silver', st: 'The country Argentina is named after this metal, not the other way around.' },
+  { n: 'Tin', s: 'Sn', z: 50, cat: 'ancient', a: 'Stannum, the Latin name for the metal', st: 'Mix tin with copper and you get bronze, which started a whole age of history.' },
+  { n: 'Antimony', s: 'Sb', z: 51, cat: 'ancient', a: 'Stibium, from an ancient eye makeup', st: 'Egyptians used it as black eyeliner thousands of years ago.' },
+  { n: 'Tungsten', s: 'W', z: 74, cat: 'property', a: 'Swedish for "heavy stone"', st: 'Its symbol W comes from a different name, wolfram, which meant "wolf’s foam" because the ore ate up tin like a wolf eating sheep.' },
+  { n: 'Platinum', s: 'Pt', z: 78, cat: 'property', a: 'Platina, Spanish for "little silver"', st: 'Spanish miners thought it was annoying silver that would not melt, so they gave it a belittling name. Now it costs more than gold.' },
+  { n: 'Zirconium', s: 'Zr', z: 40, cat: 'color', a: 'Zargun, Persian for "gold colored"', st: 'From the gemstone zircon, which comes in a golden shade.' },
+  { n: 'Molybdenum', s: 'Mo', z: 42, cat: 'property', a: 'Molybdos, Greek for lead', st: 'A case of mistaken identity: its ore looked so much like lead ore that it got lead’s name.' },
+  { n: 'Iridium', s: 'Ir', z: 77, cat: 'myth', a: 'Iris, the Greek goddess of the rainbow', st: 'Its salts come in every color of the rainbow. A worldwide layer of iridium in the rocks is how we know an asteroid killed the dinosaurs.' },
+  { n: 'Cadmium', s: 'Cd', z: 48, cat: 'myth', a: 'Cadmus, a hero of Greek myth', st: 'By way of cadmia, an old name for the zinc ore it hides in. Cadmus is the hero who planted dragon teeth and grew an army.' },
+  { n: 'Aluminum', s: 'Al', z: 13, cat: 'ancient', a: 'Alum, a salt used to set dye', st: 'Alum was used for dyeing cloth for centuries before anyone pulled the metal out of it.' },
+  { n: 'Actinium', s: 'Ac', z: 89, cat: 'property', a: 'Aktis, Greek for ray or beam', st: 'It glows blue in the dark from its own radiation.' },
+  { n: 'Protactinium', s: 'Pa', z: 91, cat: 'property', a: 'Greek for "parent of actinium"', st: 'When it decays, it turns into actinium, so it is actinium’s parent.' },
+  { n: 'Beryllium', s: 'Be', z: 4, cat: 'ancient', a: 'Beryl, a gemstone', st: 'Emeralds are beryl crystals colored green by chromium.' },
+  { n: 'Zinc', s: 'Zn', z: 30, cat: 'property', a: 'Zinke, German for a pointed tooth', st: 'Melted zinc cools into jagged points that look like teeth.' },
+  { n: 'Nitrogen', s: 'N', z: 7, cat: 'property', a: 'Greek for "nitre maker"', st: 'Nitre was saltpeter, used in gunpowder. In French it is still called azote, "no life", because you cannot breathe it alone.' },
+  { n: 'Neodymium', s: 'Nd', z: 60, cat: 'property', a: 'Greek for "new twin"', st: 'The other half of the split twin didymium. Neodymium makes the strongest magnets there are.' },
+  { n: 'Manganese', s: 'Mn', z: 25, cat: 'place', shared: true, a: 'Magnesia, a district in Greece', st: 'Same Greek district as magnesium, which caused centuries of mix-ups.' },
+  { n: 'Radon', s: 'Rn', z: 86, cat: 'property', a: 'Radium, because it comes from radium decaying', st: 'It seeps out of the ground into basements, which is why houses get tested for it.' }
+];
+
+
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const CATS = {
+    myth:     { label: 'Gods & myths', color: '#c9a2ff' },
+    space:    { label: 'Space',        color: '#4fd8ff' },
+    place:    { label: 'Places',       color: '#7ee081' },
+    person:   { label: 'People',       color: '#ff9f43' },
+    color:    { label: 'Colors',       color: '#ff7ab6' },
+    property: { label: 'What it does', color: '#ffd43b' },
+    ancient:  { label: 'Ancient names',color: '#b9c2cc' }
+  };
+  const ROUND = 10;
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('elnames_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('elnames_' + k, JSON.stringify(v)); } catch (e) {} }
+  };
+  let best = store.get('best', 0);
+  let known = new Set(store.get('known', []));
+  let soundOn = store.get('sound', true);
+  let filter = 'all';
+  let score = 0, streak = 0, qi = 0, answered = false, cur = null, missed = [];
+
+  // ---------------- sound ----------------
+  const SFX = (() => {
+    let ac = null, master = null;
+    function ctx() {
+      if (!ac) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ac = new A(); master = ac.createGain(); master.gain.value = 0.5; master.connect(ac.destination); }
+      if (ac.state === 'suspended') ac.resume();
+      return ac;
+    }
+    function tone(f, dur, type, vol, at, to) {
+      if (!soundOn || !ctx()) return;
+      const t0 = ac.currentTime + (at || 0), o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || 'sine'; o.frequency.setValueAtTime(f, t0); if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    return {
+      unlock() { if (soundOn) ctx(); },
+      right(n) { [659, 880, 1175].forEach((f, i) => tone(f * (1 + Math.min(n, 5) * 0.03), 0.28, 'triangle', 0.1, i * 0.06)); },
+      wrong() { tone(300, 0.2, 'sine', 0.1, 0, 180); tone(220, 0.3, 'sine', 0.08, 0.12, 150); },
+      tap() { tone(700, 0.05, 'triangle', 0.05); },
+      end() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.4, 'triangle', 0.09, i * 0.1)); }
+    };
+  })();
+
+  // ---------------- question building ----------------
+  const pool = () => filter === 'all' ? NAMES : NAMES.filter(e => e.cat === filter);
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  let recent = [];
+
+  function makeQuestion() {
+    const P = pool();
+    let choices = P.filter(e => !recent.includes(e.n));
+    if (choices.length < 4) { recent = []; choices = P; }
+    const subject = choices[Math.floor(Math.random() * choices.length)];
+    recent.push(subject.n); if (recent.length > Math.max(4, Math.floor(P.length / 2))) recent.shift();
+    // two question shapes, but only ask the reverse shape when the answer is unique
+    const cleanForReverse = e => !e.shared && !/because/i.test(e.a);
+    const reverse = cleanForReverse(subject) && Math.random() < 0.4 && P.length > 6;
+    if (reverse) {
+      const others = shuffle(NAMES.filter(e => e.n !== subject.n && e.a !== subject.a && cleanForReverse(e))).slice(0, 3);
+      return {
+        kind: 'reverse', subject,
+        text: `Which element is named after <em>${subject.a.replace(/^The /, '')}</em>?`,
+        options: shuffle([{ t: subject.n + ' (' + subject.s + ')', ok: true }, ...others.map(o => ({ t: o.n + ' (' + o.s + ')', ok: false }))])
+      };
+    }
+    const used = new Set([subject.a]);
+    const others = [];
+    for (const e of shuffle(NAMES.slice())) {
+      if (others.length === 3) break;
+      if (used.has(e.a)) continue;
+      used.add(e.a); others.push(e);
+    }
+    return {
+      kind: 'forward', subject,
+      text: `Where does the name <em>${subject.n}</em> come from?`,
+      options: shuffle([{ t: subject.a, ok: true }, ...others.map(o => ({ t: o.a, ok: false }))])
+    };
+  }
+
+  function ask() {
+    answered = false;
+    cur = makeQuestion();
+    $('qnum').textContent = `Question ${qi + 1} of ${ROUND}` + (filter === 'all' ? '' : ' · ' + CATS[filter].label);
+    $('q').innerHTML = cur.text;
+    const box = $('opts'); box.innerHTML = '';
+    cur.options.forEach((o, i) => {
+      const b = document.createElement('button');
+      b.className = 'opt'; b.type = 'button';
+      b.innerHTML = `<span class="k">${'ABCD'[i]}</span><span>${o.t}</span>`;
+      b.addEventListener('click', () => answer(b, o));
+      box.appendChild(b);
+    });
+    $('after').hidden = true;
+    $('game').hidden = false;
+    $('endcard').hidden = true;
+  }
+
+  function answer(btn, opt) {
+    if (answered) return;
+    answered = true;
+    SFX.unlock();
+    const s = cur.subject;
+    [...$('opts').children].forEach((b, i) => {
+      b.disabled = true;
+      const o = cur.options[i];
+      if (o.ok) b.classList.add('right');
+      else if (b === btn) b.classList.add('wrong');
+      else b.classList.add('dim');
+    });
+    if (opt.ok) {
+      score++; streak++; known.add(s.n); store.set('known', [...known]);
+      SFX.right(streak);
+      $('verdict').textContent = streak >= 3 ? `Right! ${streak} in a row 🔥` : 'Right!';
+      $('verdict').className = 'verdict ok';
+    } else {
+      streak = 0; missed.push(s);
+      SFX.wrong();
+      $('verdict').textContent = 'Not that one.';
+      $('verdict').className = 'verdict no';
+    }
+    const c = CATS[s.cat];
+    $('story').innerHTML = `<span class="chip" style="color:${c.color}">${c.label}</span> <b>${s.n} (${s.s})</b> — named after ${s.a.charAt(0).toLowerCase() + s.a.slice(1)}.<br>${s.st}`;
+    $('after').hidden = false;
+    hud(); renderBook();
+    $('nextBtn').textContent = qi + 1 >= ROUND ? 'See how you did' : 'Next question';
+  }
+
+  function next() {
+    qi++;
+    if (qi >= ROUND) return finish();
+    ask();
+  }
+
+  function finish() {
+    $('game').hidden = true;
+    $('endcard').hidden = false;
+    if (score > best) { best = score; store.set('best', best); }
+    SFX.end();
+    const msg = score === ROUND ? 'Perfect round!' : score >= 8 ? 'Great round!' : score >= 5 ? 'Nice work!' : 'Keep going!';
+    $('endTitle').textContent = `${msg} ${score} out of ${ROUND}`;
+    const rows = [`<div><b>Score this round</b><i>${score} / ${ROUND}</i></div>`,
+                  `<div><b>Best round ever</b><i>${best} / ${ROUND}</i></div>`,
+                  `<div><b>Elements you have named right</b><i>${known.size} of ${NAMES.length}</i></div>`];
+    if (missed.length) {
+      const byCat = {};
+      missed.forEach(m => byCat[m.cat] = (byCat[m.cat] || 0) + 1);
+      const worst = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
+      rows.push(`<div><b>Trickiest kind for you</b><i>${CATS[worst[0]].label}</i></div>`);
+      rows.push(`<div><b>Ones to remember</b><i>${missed.map(m => m.s).join(' ')}</i></div>`);
+    }
+    $('endRows').innerHTML = rows.join('');
+    hud(); renderBook();
+  }
+
+  function newRound() {
+    score = 0; streak = 0; qi = 0; missed = [];
+    hud(); ask();
+  }
+
+  function hud() {
+    $('score').textContent = score; $('streak').textContent = streak;
+    $('best').textContent = best; $('known').textContent = known.size;
+  }
+
+  function renderBook() {
+    const box = $('book');
+    box.innerHTML = NAMES.slice().sort((a, b) => a.z - b.z).map(e =>
+      `<div class="bel${known.has(e.n) ? ' got' : ''}" title="${e.n}"><b>${e.s}</b>${e.z}</div>`).join('');
+    $('knownPill').textContent = `${known.size} of ${NAMES.length}`;
+  }
+
+  function renderPicker() {
+    const box = $('picker'); box.innerHTML = '';
+    const mk = (key, label) => {
+      const b = document.createElement('button');
+      b.textContent = label + (key === 'all' ? ` (${NAMES.length})` : ` (${NAMES.filter(e => e.cat === key).length})`);
+      b.className = filter === key ? 'on' : '';
+      b.addEventListener('click', () => { filter = key; renderPicker(); newRound(); SFX.tap(); });
+      box.appendChild(b);
+    };
+    mk('all', 'Everything');
+    Object.entries(CATS).forEach(([k, c]) => mk(k, c.label));
+  }
+
+  $('nextBtn').addEventListener('click', next);
+  $('againBtn').addEventListener('click', newRound);
+  $('soundBtn').addEventListener('click', () => {
+    soundOn = !soundOn; store.set('sound', soundOn);
+    $('soundBtn').textContent = soundOn ? '🔊 Sound' : '🔇 Muted';
+    if (soundOn) { SFX.unlock(); SFX.tap(); }
+  });
+  $('resetBtn').addEventListener('click', () => {
+    known = new Set(); best = 0; store.set('known', []); store.set('best', 0);
+    hud(); renderBook();
+  });
+  window.addEventListener('keydown', e => {
+    const i = 'abcd'.indexOf(e.key.toLowerCase());
+    if (i >= 0 && !answered) { const b = $('opts').children[i]; if (b) b.click(); }
+    else if (e.key === 'Enter' && answered) next();
+  });
+  window.addEventListener('pointerdown', () => SFX.unlock(), { passive: true });
+  window.__en = { q: () => cur, set: f => { filter = f; newRound(); }, state: () => ({ score, streak, qi, best, known: [...known] }), answer: ok => { const opts = [...$('opts').children]; const i = cur.options.findIndex(o => o.ok === ok); opts[i].click(); } };
+
+  $('soundBtn').textContent = soundOn ? '🔊 Sound' : '🔇 Muted';
+  renderPicker(); renderBook(); newRound();
+})();
+</script>
+<div style="position:fixed;right:8px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font:600 11px/1 ui-monospace,Menlo,monospace;color:#9fb0cc;opacity:.55;pointer-events:none;z-index:50">v7</div>
+
+</body>
+</html>

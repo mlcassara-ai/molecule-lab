@@ -62,13 +62,18 @@
   .picker { display: flex; flex-wrap: wrap; gap: 6px; }
   .picker button { font-family: var(--body); font-weight: 700; font-size: 13px; border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; background: var(--panel-2); color: var(--muted); }
   .picker button.on { background: var(--gold); color: var(--ink); }
-  .bookgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 4px; }
-  .bel { background: var(--panel-2); border-radius: 8px; padding: 5px 2px 4px; text-align: center; font-size: 10.5px; line-height: 1.1; opacity: .35; }
-  .bel b { display: block; font-family: var(--display); font-size: 15px; }
-  .bel.got { opacity: 1; background: #2b3f63; }
+  .ptable { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); grid-template-rows: repeat(7, auto) 7px auto auto; gap: 2px; }
+  .pel { aspect-ratio: 1; border-radius: 4px; background: var(--panel-2); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; opacity: .3; overflow: hidden; }
+  .pel b { font-family: var(--display); font-weight: 800; font-size: clamp(7px, 1.5vw, 13px); }
+  .pel i { font-style: normal; font-family: var(--mono); font-size: clamp(5px, 0.85vw, 8px); opacity: .75; }
+  .pel.got { opacity: 1; color: #0d1420; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+  @media (max-width: 520px) { .pel i { display: none; } }
   h2 { font-family: var(--display); font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin: 0; font-weight: 600; }
 </style>
-<a href="index.html?v=7" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
+<a href="index.html?v=8" style="display:inline-block;margin:calc(10px + env(safe-area-inset-top,0px)) 16px 0;font:700 14px/1 system-ui,-apple-system,sans-serif;color:inherit;opacity:.8;text-decoration:none;padding:8px 12px;border-radius:999px;border:1px solid currentColor">← Molecule Lab</a>
 
 
 <div class="wrap">
@@ -113,7 +118,8 @@
 
   <div class="card">
     <h2>Names you have gotten right <span class="chip" id="knownPill">0</span></h2>
-    <div class="bookgrid" id="book"></div>
+    <div class="ptable" id="book"></div>
+    <div class="legend" id="legend"></div>
   </div>
 </div>
 
@@ -232,7 +238,12 @@ const NAMES = [
   { n: 'Nitrogen', s: 'N', z: 7, cat: 'property', a: 'Greek for "nitre maker"', st: 'Nitre was saltpeter, used in gunpowder. In French it is still called azote, "no life", because you cannot breathe it alone.' },
   { n: 'Neodymium', s: 'Nd', z: 60, cat: 'property', a: 'Greek for "new twin"', st: 'The other half of the split twin didymium. Neodymium makes the strongest magnets there are.' },
   { n: 'Manganese', s: 'Mn', z: 25, cat: 'place', shared: true, a: 'Magnesia, a district in Greece', st: 'Same Greek district as magnesium, which caused centuries of mix-ups.' },
-  { n: 'Radon', s: 'Rn', z: 86, cat: 'property', a: 'Radium, because it comes from radium decaying', st: 'It seeps out of the ground into basements, which is why houses get tested for it.' }
+  { n: 'Radon', s: 'Rn', z: 86, cat: 'property', a: 'Radium, because it comes from radium decaying', st: 'It seeps out of the ground into basements, which is why houses get tested for it.' },
+  { n: 'Boron', s: 'B', z: 5, cat: 'ancient', a: 'Borax, an old name for the mineral', st: 'Borax was traded across Asia for centuries as a cleaner and a soldering flux. The element was pulled out of it and kept the name.' },
+  { n: 'Sulfur', s: 'S', z: 16, cat: 'ancient', a: 'Sulphur, its ancient Latin name', st: 'The old English name was brimstone, meaning "burning stone". Sulfur is what makes rotten eggs and struck matches smell.' },
+  { n: 'Arsenic', s: 'As', z: 33, cat: 'color', a: 'Arsenikon, Greek for a golden yellow mineral', st: 'Named for orpiment, a bright yellow rock. The same root also meant "strong", which fit its reputation as a poison.' },
+  { n: 'Thulium', s: 'Tm', z: 69, cat: 'place', a: 'Thule, a legendary land in the far north', st: 'Thule was the old name for the northernmost place anyone knew of, which suited an element found in Scandinavia.' },
+  { n: 'Bismuth', s: 'Bi', z: 83, cat: 'property', a: 'Weisse Masse, German for "white mass"', st: 'German miners called it the white stuff. Grown slowly, it forms rainbow-colored staircase crystals.' }
 ];
 
 
@@ -405,11 +416,35 @@ const NAMES = [
     $('best').textContent = best; $('known').textContent = known.size;
   }
 
+  // where each element sits on a real periodic table: [row, column]
+  function tablePos(z) {
+    if (z === 1) return [1, 1];
+    if (z === 2) return [1, 18];
+    if (z <= 4) return [2, z - 2];
+    if (z <= 10) return [2, z + 8];
+    if (z <= 12) return [3, z - 10];
+    if (z <= 18) return [3, z];
+    if (z <= 36) return [4, z - 18];
+    if (z <= 54) return [5, z - 36];
+    if (z <= 56) return [6, z - 54];
+    if (z <= 71) return [9, z - 54];          // lanthanides, in their own strip
+    if (z <= 86) return [6, z - 68];
+    if (z <= 88) return [7, z - 86];
+    if (z <= 103) return [10, z - 86];        // actinides
+    return [7, z - 100];
+  }
   function renderBook() {
     const box = $('book');
-    box.innerHTML = NAMES.slice().sort((a, b) => a.z - b.z).map(e =>
-      `<div class="bel${known.has(e.n) ? ' got' : ''}" title="${e.n}"><b>${e.s}</b>${e.z}</div>`).join('');
+    box.innerHTML = NAMES.slice().sort((a, b) => a.z - b.z).map(e => {
+      const [r, c] = tablePos(e.z), got = known.has(e.n), col = CATS[e.cat].color;
+      return `<div class="pel${got ? ' got' : ''}" style="grid-row:${r};grid-column:${c}${got ? ';background:' + col : ''}" title="${e.n} (${e.z}) \u2014 ${CATS[e.cat].label}"><b>${e.s}</b><i>${e.z}</i></div>`;
+    }).join('');
     $('knownPill').textContent = `${known.size} of ${NAMES.length}`;
+    if (!$('legend').dataset.done) {
+      $('legend').dataset.done = '1';
+      $('legend').innerHTML = Object.values(CATS).map(c => `<span><i style="background:${c.color}"></i>${c.label}</span>`).join('') +
+        '<span><i style="background:var(--panel-2)"></i>not yet</span>';
+    }
   }
 
   function renderPicker() {
@@ -448,7 +483,7 @@ const NAMES = [
   renderPicker(); renderBook(); newRound();
 })();
 </script>
-<div style="position:fixed;right:8px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font:600 11px/1 ui-monospace,Menlo,monospace;color:#9fb0cc;opacity:.55;pointer-events:none;z-index:50">v7</div>
+<div style="position:fixed;right:8px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font:600 11px/1 ui-monospace,Menlo,monospace;color:#9fb0cc;opacity:.55;pointer-events:none;z-index:50">v8</div>
 
 </body>
 </html>
